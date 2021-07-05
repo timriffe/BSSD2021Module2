@@ -48,14 +48,11 @@ knitr::opts_chunk$set(echo = TRUE)
 \end{center}
 \vspace{0.8cm}
 
----
-The following command will provide a table of contents.
----
+
 \tableofcontents
 
----
-Use # for Sections, ## for Subsections, and ### for Subsubsections
----
+
+
 # Preliminary remarks
 
 This aim of this *Demography with R* module is to provide you the basics of demographic thinking, and to help you start producing basic demographic measures in R. The class will focus on three major demographic products: the life table, decomposition, and projections.
@@ -73,6 +70,7 @@ Materials for this module will be hosted here:
 [https://github.com/timriffe/BSSD2021Module2](https://github.com/timriffe/BSSD2021Module2)
 This repository will be built over the course of this week and updated after each live session.
 
+
 # Review of R concepts and functions
 
 ## Vector, data.frame, matrix and list
@@ -84,6 +82,7 @@ This repository will be built over the course of this week and updated after eac
 * **matrix** A matrix, is a two-dimensional object where a variable, generally numeric (e.g. birth counts), is arranged into rows and columns. Can be created with `matrix()`.
 
 * **list** A list can contain elements of different types and dimensions. Can be created with `list()`.
+
 
 ## R commands
 
@@ -145,6 +144,7 @@ plot(x=X, y=Y,
 
 ```
 
+
 `read_csv()` from `readr` package: Reads a comma-separated file in table format and creates a data frame from it with pretty good default settings. `read_delim()` from the same package is more general.
 
 ## tidyverse concepts
@@ -169,6 +169,7 @@ I have a habit of rewarding the completion of a pipeline with a plot of some kin
 Of course there's a cheat sheet that can help you figure out which concept you need:
 [https://www.rstudio.com/wp-content/uploads/2015/02/data-wrangling-cheatsheet.pdf](https://www.rstudio.com/wp-content/uploads/2015/02/data-wrangling-cheatsheet.pdf)
 
+
 # General demographic concepts
 
 ## What is demography?
@@ -189,6 +190,7 @@ In summary, demographers use quantitative approaches to study population dynamic
 * Processes: Fertility, Mortality and Migration
 
 And maybe a thousand more things because really the field is a cognate of many other sciences.
+
 
 ## What is a population?
 
@@ -300,6 +302,7 @@ ES2014 <-
 # Population pyramid
 
 Population pyramid or age pyramid is the most common tool to visualize the age structure of a population by sex (for better or worse). Each age is represented by a horizontal bar and male age distribution is plotted on the left and female age distribution on the right. 
+
 
 ```{r}
 
@@ -598,10 +601,7 @@ ES2014_2 %>%
          xbar = Age + n / 2) %>% 
   summarize(MA = sum(xbar * ASFR) / sum(ASFR))
 
-
 ```
-
-
 
 # Exercises {-}
 
@@ -613,6 +613,3 @@ Load the data `PopulationSpain.txt` and `BirthsSpain.txt`
 4. Plot TFR over time.
 5. Calculate the mean age at birth over time.
 6. Plot the mean age over time.
-
-
-# References {-}
