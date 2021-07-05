@@ -254,7 +254,8 @@ B2014 <- read_delim("BirthsSpain2014.txt",
                     delim = " ",
                     trim_ws = TRUE) %>% 
   mutate(Sex = "Total") %>% 
-  select(Year, Age, Sex, Births = Total)
+  select(Year, Age, Sex, Births = Total) %>% 
+         mutate(Age = parse_number(Age)) 
 
 # Death counts in 2014
 
@@ -263,7 +264,8 @@ D2014 <- read_delim("DeathsSpain2014.txt",
                     trim_ws = TRUE)  %>% 
          pivot_longer(Female:Total, 
                       names_to = "Sex", 
-                      values_to = "Deaths")
+                      values_to = "Deaths") %>% 
+         mutate(Age = parse_number(Age)) 
   
 # Population counts on January 1st, 2014
 
@@ -272,7 +274,8 @@ P2014 <- read_delim("PopulationSpain2014.txt",
                     trim_ws = TRUE) %>% 
          pivot_longer(Female:Total, 
                       names_to = "Sex", 
-                      values_to = "Population") 
+                      values_to = "Population") %>% 
+         mutate(Age = parse_number(Age)) 
 
 # Population counts on January 1st, 2015
 
@@ -281,7 +284,8 @@ P2015 <- read_delim("PopulationSpain2015.txt",
                     trim_ws = TRUE) %>% 
          pivot_longer(Female:Total, 
                       names_to = "Sex", 
-                      values_to = "Population") 
+                      values_to = "Population") %>% 
+         mutate(Age = parse_number(Age)) 
 
 ES2014 <-
   P2014 %>% 
@@ -290,13 +294,9 @@ ES2014 <-
               values_from = Population, 
               names_prefix = "P") %>% 
   left_join(D2014, by = c("Age", "Sex")) %>% 
-  left_join(B2014, by = c("Year", "Age", "Sex")) %>% 
-  mutate(Age = parse_number(Age)) %>% 
+  left_join(B2014, by = c("Age", "Sex")) %>% 
   arrange(Sex, Age)
-
-
 ```
-
 
 
 # Population pyramid
@@ -607,9 +607,12 @@ ES2014_2 %>%
 
 Load the data `PopulationSpain.txt` and `BirthsSpain.txt`
 
+
 1. Calculate age-specific fertility rates from 1950 until 2014 (annually) from age 12 to 55. Skip the year 1975!
 2. Plot the age-specific rates in 1950 and 2014.
 3. Calculate the TFR at each year.
 4. Plot TFR over time.
 5. Calculate the mean age at birth over time.
 6. Plot the mean age over time.
+
+# References {-}
