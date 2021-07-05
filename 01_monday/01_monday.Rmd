@@ -14,53 +14,25 @@ output:
     number_sections: yes
     toc: yes
   pdf_document2: default
-header-includes:
-- \usepackage{titling}
-- \pretitle{\begin{center}\includegraphics[trim=0 0 0 8cm, width=6cm]{logotipCED.png}\\[\bigskipamount]}
-- \posttitle{\end{center}}
-- \usepackage{fancyhdr}
-- \pagestyle{fancy}
-- \fancyhead[LE]{\thepage~\qquad~Barcelona Summer School of Demography}
-- \fancyhead[RE]{Module~2.~Demography with R}
-- \fancyhead[LO]{Basic Demographic Measures}
-- \fancyhead[RO]{Tim Riffe\qquad~\thepage}
-- \fancyfoot[CO,CE]{\includegraphics[width=2.8cm]{logotipCED.png}}
+  header-includes:
+    - \usepackage{titling}
+    - \pretitle{\begin{center}\includegraphics[trim=0 0 0 8cm, width=6cm]{logotipCED.png}\\[\bigskipamount]}
+    - \posttitle{\end{center}}
+    - \usepackage{fancyhdr}
+    - \pagestyle{fancy}
+    - \fancyhead[LE]{\thepage~\qquad~Barcelona Summer School of Demography}
+    - \fancyhead[RE]{Module~2.~Demography with R}
+    - \fancyhead[LO]{Basic Demographic Measures}
+    - \fancyhead[RO]{Tim Riffe\qquad~\thepage}
+    - \fancyfoot[CO,CE]{\includegraphics[width=2.8cm]{logotipCED.png}}
 subtitle: Basic Demographic measures
 bibliography: bibliography.bib
----
-
----
-COMMENTS: This template is to be used for the HANDOUTS of the BARCELONA SUMMER SCHOOL OF DEMPGRAPHY
-AUTHOR: Francisco Villavicencio
-LAST UPDATE: 07 Feb 2018
-INSTRUCTIONS:
- - The template is set up to be complied into PDF, but it also works for HTML documents
- - If you are willing to COMPILE into PDF, you may
-    1) In the 'title' section above, replace by the NUMBER and NAME of your MODULE, and the NUMBER and TITLE of your SESSION.
-    2) In the 'header-includes' section above, replace by the NUMBER and NAME of your MODULE, and the TITLE of your SESSION (I'd rather NOT include the NUMBER of SESSION here, otherwise too much text).
-    3) In the 'header-includes' section, replace by your name (initials of first name + full surname).
-    4) In the Latex code below, replace by your name, email address and correct date.
- - If you are willing to COMPILE into HTML, the current title, author, date and headers will not show up. 
-   Therefore, you may:
-    1) Replace the current title by the following:
-    title: |
-      | Barcelona Summer School of Demography
-      | Module X. Name of your module
-    2) Below the title, add the following
-    subtitle: Number and Title of your session
-    author: Name and Surname - Email address
-    date: DAY MONTH YEAR
-WARNING: When modifying all these data, be careful of respecting all the vertical and horizontal spaces, so all the handouts have the same layout.
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
----
-AUTHORS for PDF: It will not show up when compiling into HTML
-Delete one of the mini pages if only 1 author/instructor
----
 \noindent\makebox[\textwidth][c]{
   \begin{minipage}[t]{0.45\textwidth}
     \centering
@@ -69,10 +41,7 @@ Delete one of the mini pages if only 1 author/instructor
   \end{minipage}
 }
 
----
-DATE for PDF: It will not show up when compiling into HTML
-Replace by correct date: DAY MONTH YEAR or MONTH YEAR
----
+
 \vspace{0.8cm}
 \begin{center}
 \large{5 July 2021}
@@ -108,13 +77,13 @@ This repository will be built over the course of this week and updated after eac
 
 ## Vector, data.frame, matrix and list
 
-\textbf{Dataframe:} A `data.frame` is a table where the columns are variables and the rows are observation. Each column/variable can be of different types (e.g. factors, numeric, etc.). Can be created with `data.frame()`. `tibble` is another kind of `data.frame` we'll introduce.
+* **data.frame** A `data.frame` is a table where the columns are variables and the rows are observation. Each column/variable can be of different types (e.g. factors, numeric, etc.). Can be created with `data.frame()`. `tibble` is another kind of `data.frame` we'll introduce.
 
-\textbf{Vector:} A combination of elements. Can be created with `c()`, `seq()`, `rep()`.
+* **vector** A combination of elements. Can be created with `c()`, `seq()`, `rep()`.
 
-\textbf{Matrix:} A matrix, is a two-dimensional object where a variable, generally numeric (e.g. birth counts), is arranged into rows and columns. Can be created with `matrix()`.
+* **matrix** A matrix, is a two-dimensional object where a variable, generally numeric (e.g. birth counts), is arranged into rows and columns. Can be created with `matrix()`.
 
-\textbf{List:} A list can contain elements of different types. Can be created with `list()`.
+* **list** A list can contain elements of different types and dimensions. Can be created with `list()`.
 
 ## R commands
 
@@ -247,6 +216,7 @@ The Lexis diagram is a two-dimensional figure used to represent demographic even
 
 ```{r error=F, message=F, warning=F}
 library("LexisPlotR")
+library(ggplot2)
 mylexis <- lexis_grid(year_start = 2010, year_end = 2015, 
                     age_start = 0, age_end = 5)+
   labs(title = "Lexis diagram 1: empty diagram")
@@ -637,13 +607,12 @@ ES2014_2 %>%
 
 Load the data `PopulationSpain.txt` and `BirthsSpain.txt`
 
-
-* Calculate age-specific fertility rates from 1950 until 2014 (annually) from age 12 to 55. Skip the year 1975!
-* Plot the age-specific rates in 1950 and 2014.
-* Calculate the TFR at each year.
-* Plot TFR over time.
-* Calculate the mean age at birth over time.
-* Plot the mean age over time.
+1. Calculate age-specific fertility rates from 1950 until 2014 (annually) from age 12 to 55. Skip the year 1975!
+2. Plot the age-specific rates in 1950 and 2014.
+3. Calculate the TFR at each year.
+4. Plot TFR over time.
+5. Calculate the mean age at birth over time.
+6. Plot the mean age over time.
 
 
 # References {-}
