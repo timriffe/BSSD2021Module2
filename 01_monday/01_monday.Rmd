@@ -1,0 +1,649 @@
+---
+title: |
+  | Barcelona Summer School of Demography
+  | \vspace{1.5cm} \LARGE \emph{Module~2.~Demography with R}
+  | \vspace{0.3cm} \huge \textbf{1.~Basic Demographic Measures}\vspace{0.6cm}
+fontsize: 11pt
+geometry: a4paper, twoside, left=2.5cm, right=2.5cm, top=3.2cm, bottom=2.8cm, headsep
+  = 1.35cm, footskip = 1.6cm
+output:
+  pdf_document:
+    number_sections: yes
+  html_document2: default
+  html_document:
+    number_sections: yes
+    toc: yes
+  pdf_document2: default
+header-includes:
+- \usepackage{titling}
+- \pretitle{\begin{center}\includegraphics[trim=0 0 0 8cm, width=6cm]{logotipCED.png}\\[\bigskipamount]}
+- \posttitle{\end{center}}
+- \usepackage{fancyhdr}
+- \pagestyle{fancy}
+- \fancyhead[LE]{\thepage~\qquad~Barcelona Summer School of Demography}
+- \fancyhead[RE]{Module~2.~Demography with R}
+- \fancyhead[LO]{Basic Demographic Measures}
+- \fancyhead[RO]{Tim Riffe\qquad~\thepage}
+- \fancyfoot[CO,CE]{\includegraphics[width=2.8cm]{logotipCED.png}}
+subtitle: Basic Demographic measures
+bibliography: bibliography.bib
+---
+
+---
+COMMENTS: This template is to be used for the HANDOUTS of the BARCELONA SUMMER SCHOOL OF DEMPGRAPHY
+AUTHOR: Francisco Villavicencio
+LAST UPDATE: 07 Feb 2018
+INSTRUCTIONS:
+ - The template is set up to be complied into PDF, but it also works for HTML documents
+ - If you are willing to COMPILE into PDF, you may
+    1) In the 'title' section above, replace by the NUMBER and NAME of your MODULE, and the NUMBER and TITLE of your SESSION.
+    2) In the 'header-includes' section above, replace by the NUMBER and NAME of your MODULE, and the TITLE of your SESSION (I'd rather NOT include the NUMBER of SESSION here, otherwise too much text).
+    3) In the 'header-includes' section, replace by your name (initials of first name + full surname).
+    4) In the Latex code below, replace by your name, email address and correct date.
+ - If you are willing to COMPILE into HTML, the current title, author, date and headers will not show up. 
+   Therefore, you may:
+    1) Replace the current title by the following:
+    title: |
+      | Barcelona Summer School of Demography
+      | Module X. Name of your module
+    2) Below the title, add the following
+    subtitle: Number and Title of your session
+    author: Name and Surname - Email address
+    date: DAY MONTH YEAR
+WARNING: When modifying all these data, be careful of respecting all the vertical and horizontal spaces, so all the handouts have the same layout.
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+---
+AUTHORS for PDF: It will not show up when compiling into HTML
+Delete one of the mini pages if only 1 author/instructor
+---
+\noindent\makebox[\textwidth][c]{
+  \begin{minipage}[t]{0.45\textwidth}
+    \centering
+    \Large{Tim Riffe} \\
+    \vspace{0.1cm}\large{\texttt{tim.riffe@gmail.com}}
+  \end{minipage}
+}
+
+---
+DATE for PDF: It will not show up when compiling into HTML
+Replace by correct date: DAY MONTH YEAR or MONTH YEAR
+---
+\vspace{0.8cm}
+\begin{center}
+\large{5 July 2021}
+\end{center}
+\vspace{0.8cm}
+
+---
+The following command will provide a table of contents.
+---
+\tableofcontents
+
+---
+Use # for Sections, ## for Subsections, and ### for Subsubsections
+---
+# Preliminary remarks
+
+This aim of this *Demography with R* module is to provide you the basics of demographic thinking, and to help you start producing basic demographic measures in R. The class will focus on three major demographic products: the life table, decomposition, and projections.
+
+As for the previous modules, lectures are scheduled every morning from 10:00 to 14:00. You will have a 10 minute break every hour. Each lecture will be a mixture of theoretical lectures and practical exercises. 
+
+This material was hand crafted by the great Marie-Pier Bergeron-Boucher, and is typically masterfully delivered by her. I'm stepping in just for this season of BSSD, but I can't help myself but to modify content just a bit to fit the current lineup. Specifically, it will be nice to do as much as possible of this in the so-called-tidy framework. But for the sake of time, this won't be as explicit an introduction as I'd like. If you're so inclined, you can supplement this superficial tidyverse intro check out my tidy-intro materials from previous such workshops. 
+
+* BSSD 2019 Module 1: [https://github.com/timriffe/BSSD2019Module1](https://github.com/timriffe/BSSD2019Module1)
+* EDSD 2019 Data Wrangling module: [https://github.com/timriffe/EDSD2019data](https://github.com/timriffe/EDSD2019data)
+* EDSD 2020 Data Wrangling module (reduced content due to online format):
+[https://github.com/timriffe/EDSD2020data](https://github.com/timriffe/EDSD2020data)
+
+Materials for this module will be hosted here:
+[https://github.com/timriffe/BSSD2021Module2](https://github.com/timriffe/BSSD2021Module2)
+This repository will be built over the course of this week and updated after each live session.
+
+# Review of R concepts and functions
+
+## Vector, data.frame, matrix and list
+
+\textbf{Dataframe:} A `data.frame` is a table where the columns are variables and the rows are observation. Each column/variable can be of different types (e.g. factors, numeric, etc.). Can be created with `data.frame()`. `tibble` is another kind of `data.frame` we'll introduce.
+
+\textbf{Vector:} A combination of elements. Can be created with `c()`, `seq()`, `rep()`.
+
+\textbf{Matrix:} A matrix, is a two-dimensional object where a variable, generally numeric (e.g. birth counts), is arranged into rows and columns. Can be created with `matrix()`.
+
+\textbf{List:} A list can contain elements of different types. Can be created with `list()`.
+
+## R commands
+
+`as.character()`: Transforms an object into a character type object.
+
+```{r error=F, message=F, warning=F}
+#Example
+
+A<-seq(1,10,2)
+A
+class(A)
+
+B<-as.character(A)
+B
+class(B)
+
+```
+
+`as.numeric()`: Transform an object into a numeric type object (e.g. 1,2,10,etc.).
+
+
+```{r error=F, message=F, warning=F}
+#Example
+
+C<-as.numeric(B)
+C
+class(C)
+
+```
+Other useful goodies include `as.integer()`, `as.factor()`, and so forth. Likewise, a `data.frame` can be coerced to a `matrix` with `as.matrix()` (or in the other direction, with `as.data.frame()`), `as.list()` separates the columns of a `matrix` or `data.frame` into `vector` elements of a `list`. When in doubt, try `as.*` whenever you're feeling coercive. My feeble attempts to *tidy* this module will certainly introduce the `tibble()` object, which you can think of as another name for `data.frame`.
+
+`expand.grid()`: Create a data frame from all combinations of the supplied vectors or factors.
+
+```{r error=F, message=F, warning=F}
+#Example
+
+Y<-c("A", "B")
+X<-c(1, 2)
+Z<-c("C", "D")
+
+Dta<-expand.grid(Var1=Y, Var2=X, Var3=Z)
+Dta
+
+```
+
+
+`plot()`: Generic function for plotting R objects. Insert the values of the x axis, y axis, and other graphical arguments, e.g. `main` (title), `ylab` (label of the y axis), `type` (what should be draw: points, lines, etc.)
+
+```{r error=F, message=F, warning=F}
+#Example
+
+X<-1:10
+Y<-10:19
+
+plot(x=X, y=Y,
+     type="l",
+     main="Plot example",
+     ylab="Var2", xlab="Var1")
+
+```
+
+`read_csv()` from `readr` package: Reads a comma-separated file in table format and creates a data frame from it with pretty good default settings. `read_delim()` from the same package is more general.
+
+## tidyverse concepts
+
+Tidy refers to a particular data format. You may have come across long vs wide format data in other contexts. `tidy` data is closer to long format, but in a particular way. It is a rectangular data layout, where *observations* are in rows and *variables* are in columns. That's literally all there is to it, and it really is somewhat more flexible than it looks at first, since it's not always clear what constitutes an observation. For panel survey data, an observation might be a respondent, a respondent-wave, or a respondent-wave interval! For aggregate demography, an observation might be as as simple as a combination of year, age, and sex. Variables are in this case, structuring variables, such as year, age, and sex, as well as value variables on hand, such as population counts, deaths counts, and the like. A tidy data structure fits many demographic data applications very well. I'll do my best to merge the material of this block with a tidy approach, as this will give you a strong tool kit for data analysis.
+
+`dplyr` verbs
+1. `pivot_longer()` stack a range of columns
+2. `pivot_wider()` take a single column and spread it over columns
+3. `group_by()` declare subgroups for independent operations
+4. `mutate()` make new columns, no loss of rows
+5. `summarize()` aggregates over rows. Usually reduces nr of rows
+6. `select()` selects columns
+7. `filter()` selects rows (subsets)
+8. `ungroup()` removes group declaration
+9. `left_join()` merges two data sources, preserving the rows of the left-side object.
+
+These and other such statements can be strung together into data *pipelines* using the pipe operator `%>%` (shortcut: `Ctrl + m`) 
+
+I have a habit of rewarding the completion of a pipeline with a plot of some kind using `ggplot2`. I will do this on the fly for the sake of the output. Ilya will give an explicit and more complete intro to `ggplot2` concepts in Module 3. My peppering it into this module will at least prime you for his master class! Now let's talk about demography!
+
+Of course there's a cheat sheet that can help you figure out which concept you need:
+[https://www.rstudio.com/wp-content/uploads/2015/02/data-wrangling-cheatsheet.pdf](https://www.rstudio.com/wp-content/uploads/2015/02/data-wrangling-cheatsheet.pdf)
+
+# General demographic concepts
+
+## What is demography?
+
+According to the Max Planck Institute for Demographic Research:
+"*Demography is the science of populations. Demographers seek to understand population dynamics by investigating three main demographic processes: birth, migration, and aging (including death)*." [\url{https://www.demogr.mpg.de/en/education_career/what_is_demography_1908/default.htm}]
+
+According to the Oxford Dictionary demography is "*The study of statistics such as births, deaths, income, or the incidence of disease, which illustrate the changing structure of human populations*."
+
+One more...
+"*Demography is the study of the size, territorial distribution, and composition of population, changes therein, and the components of such changes*." [@Hauser1959Population]
+
+In summary, demographers use quantitative approaches to study population dynamics and changes by investigating their
+
+* Size
+* Growth
+* Composition/structure (age, socioeconomic status, etc. )
+* Processes: Fertility, Mortality and Migration
+
+And maybe a thousand more things because really the field is a cognate of many other sciences.
+
+## What is a population?
+
+Broadly defined, demographers refer to a population as "*the collection of persons alive at a specific point in time who meet certain criteria*" [@preston2001demography].
+
+Often we just deal with populations defined by administrative boundaries, but this is not necessarily the case.
+
+## Three dimensions of changes
+
+Generally, demographers study demographic events (birth, death and migration) on three interrelated aspects of temporal structure: age, period, and cohort.
+
+### Age and period 
+
+In censuses, civil registries, and most surveys, data and events will generally be recorded by year and age of occurrence. For example, in 2014, 1202 infants died before age 1 in Spain [@HMD]. 
+
+
+### Cohort
+
+A cohort is defined as "*the aggregate of all units that experience a particular demographic event during a specific time interval*" [@preston2001demography]. For example, the 1950 Spanish birth cohort consist of all individuals born in 1950 in Spain.
+
+
+### Lexis diagram
+
+The Lexis diagram is a two-dimensional figure used to represent demographic events across year, age, and cohort. On the diagram, age is one dimension and calendar year is the other. Cohorts advance through life along a 45-degree line. 
+
+```{r error=F, message=F, warning=F}
+library("LexisPlotR")
+mylexis <- lexis_grid(year_start = 2010, year_end = 2015, 
+                    age_start = 0, age_end = 5)+
+  labs(title = "Lexis diagram 1: empty diagram")
+mylexis
+
+```
+
+On a Lexis diagram, each individual is represented as a *life-line*, advancing through time and age as a parallel line to the cohort line.
+
+```{r error=F, message=F, warning=F}
+mylexis<-lexis_grid(year_start = 2010, year_end = 2015, 
+                    age_start = 0, age_end = 5)+
+  labs(title = "Lexis diagram 2: example with life-line")
+lexis_lifeline(lg = mylexis, 
+               birth = "2010-05-01", 
+               exit="2013-03-23", 
+               lineends = TRUE)
+
+```
+
+
+# Data
+
+We will use the Spanish females data from the HMD [@HMD] and HFD [@HFD] for the year 2014 (and 2015 population counts). Please read in the raw data using these lines:
+
+```{r error=F, message=F, warning=F}
+
+library(tidyverse)
+library(readr)
+#Birth counts in 2014
+
+B2014 <- read_delim("BirthsSpain2014.txt", 
+                    delim = " ",
+                    trim_ws = TRUE) %>% 
+  mutate(Sex = "Total") %>% 
+  select(Year, Age, Sex, Births = Total)
+
+# Death counts in 2014
+
+D2014 <- read_delim("DeathsSpain2014.txt",
+                    delim = " ",
+                    trim_ws = TRUE)  %>% 
+         pivot_longer(Female:Total, 
+                      names_to = "Sex", 
+                      values_to = "Deaths")
+  
+# Population counts on January 1st, 2014
+
+P2014 <- read_delim("PopulationSpain2014.txt",
+                    delim = " ",
+                    trim_ws = TRUE) %>% 
+         pivot_longer(Female:Total, 
+                      names_to = "Sex", 
+                      values_to = "Population") 
+
+# Population counts on January 1st, 2015
+
+P2015 <- read_delim("PopulationSpain2015.txt",
+                    delim = " ",
+                    trim_ws = TRUE) %>% 
+         pivot_longer(Female:Total, 
+                      names_to = "Sex", 
+                      values_to = "Population") 
+
+ES2014 <-
+  P2014 %>% 
+  bind_rows(P2015) %>% 
+  pivot_wider(names_from = Year, 
+              values_from = Population, 
+              names_prefix = "P") %>% 
+  left_join(D2014, by = c("Age", "Sex")) %>% 
+  left_join(B2014, by = c("Year", "Age", "Sex")) %>% 
+  mutate(Age = parse_number(Age)) %>% 
+  arrange(Sex, Age)
+
+
+```
+
+
+
+# Population pyramid
+
+Population pyramid or age pyramid is the most common tool to visualize the age structure of a population by sex (for better or worse). Each age is represented by a horizontal bar and male age distribution is plotted on the left and female age distribution on the right. 
+
+```{r}
+
+#Prepare the data
+
+
+#Plot the pyramid with ggplot2
+
+library(ggplot2)
+
+
+ES2014 %>% 
+  select(Sex, Age, Population = P2015) %>% 
+  filter(Sex != "Total") %>% 
+  mutate(Population = ifelse(Sex == "Male", -Population, Population)) %>% 
+  ggplot( aes(x = Age, y = Population, fill = Sex, color = Sex)) +
+  geom_bar(stat = "identity") +
+  scale_y_continuous(breaks = seq(-400000, 400000, 200000),
+                     labels = paste0(as.character(c(seq(400, 0, -200), seq(200, 400, 200))), "k")) +
+  coord_flip()+
+  scale_fill_brewer(palette = "Set1") +
+  theme_bw()
+
+
+```
+
+
+
+
+# Demographic rate vs probability
+
+## Probability
+
+A probability is a concept for cohorts only. It refers to the chance that an event will occur [@preston2001demography] and is calculated as: 
+
+$$
+Probability = \frac{Number~of~Occurences}{Number~of~preceeding~Events~or~trials}
+$$
+For example, the probability of dying at a specific age - e.g. age 5 - is the number of deaths occurring at age 5 (between the exact age 5 and exact age 6) in a cohort, divided by the number of people who reached the exact age of 5. In the Lexis diagram below, the numbers in red are the events (deaths) and the numbers in black are the number of people alive at an exact age or date. Using this example, the death probability at age 1 from the birth cohort 1900 is:
+
+```{r}
+deaths<-20+15
+preAlive<-150
+probability<- deaths/preAlive
+probability
+
+```
+
+```{r error=F, message=F, warning=F, echo=F}
+library(lubridate)
+# devtools::install_github("ottlngr/LexisPlotR")
+library(LexisPlotR)
+lexis_grid(year_start = 1900, year_end = 1903, 
+           age_start = 0, age_end = 3) +
+  labs(title = "Lexis diagram 3: example with numbers")+
+  annotate(geom="text",x=ymd("1901-01-01"), y=1.5,label="200",fontface="bold", angle=90)+
+  annotate(geom="text",x=ymd("1902-01-01"), y=2.5,label="150",fontface="bold", angle=90)+
+  annotate(geom="text",x=ymd("1901-07-01"), y=2,label="175",fontface="bold")+
+  annotate(geom="text",x=ymd("1901-04-01"), y=1.7,label="25",fontface="bold", color="red")+
+  annotate(geom="text",x=ymd("1901-10-01"), y=2.2,label="25",fontface="bold", color="red")+
+  
+  annotate(geom="text",x=ymd("1901-01-01"), y=0.5,label="170",fontface="bold", angle=90)+
+  annotate(geom="text",x=ymd("1902-01-01"), y=1.5,label="130",fontface="bold", angle=90)+
+  annotate(geom="text",x=ymd("1901-07-01"), y=1,label="150",fontface="bold")+
+  annotate(geom="text",x=ymd("1902-07-01"), y=2,label="115",fontface="bold")+
+  annotate(geom="text",x=ymd("1901-04-01"), y=0.7,label="20",fontface="bold", color="red")+
+  annotate(geom="text",x=ymd("1902-04-01"), y=1.7,label="15",fontface="bold", color="red")+
+  annotate(geom="text",x=ymd("1901-10-01"), y=1.2,label="20",fontface="bold", color="red")
+
+```
+
+## Rate
+Rather than the chance that an event occurs, as the probability, we here look at the rate at which an events occur. Rates can be both applied to period and cohort analysis. However, as most demographic information is periodic, period rates are often used. Other period-perspective demographic quantities, such as period life expectancy, or conditional probabilities, are then derived as needed from rates.
+
+In demography, rates are normally known as occurrence-exposure rates (events related to exposure to risk). Often, exposure rates referred to person-year lived [@preston2001demography]. Rates differ from probabilities in the denominator:
+
+
+$$
+Rate = \frac{Number~of~Occurences}{Number~of~person-years~lived}
+$$
+
+With rates, the number of occurrences is scaled to the population size AND per unit time.
+
+
+### Person-years
+
+The person-years concept refers to the number year a person lived - i.e. is *exposed* to the event - in a specific interval. For example, if a person lives 1 year in an interval 0 to 1 year, then this person contributed one person-year. If another person lived 5 days in the same interval, this person contributed (about) 5/365th of a person-year in the same time interval. 
+
+In the Lexis diagram 2, the life-line illustrates the case of a person who contributed 0.89 (326/365) person-year of exposure to the risk of dying at age 2 for the birth cohort 2010. The same person contributed 2.89 person-years of exposure in the full 2010 birth cohort.
+
+When person-years are used, the rate is an *annualized* rate.
+
+The person-years are however rarely observed or counted [@preston2001demography]. Thus, person-years ($PY$) are often calculated by assuming that the persons ($P$) who experienced an event ($E$) in a given interval ($t:t+n$), experienced it at the mid-point of the interval:
+
+
+$$
+_nPY_t  = \frac{P_t + P_{t+n}}{2}
+$$
+For example, the death rate at age 1 for the birth cohort 1900 on the Lexis diagram 3 is:
+
+```{r}
+deaths <- 20+15
+Pyear  <- (150+115)/2
+rate   <- deaths/Pyear
+rate
+
+```
+
+The period death rate at age 1 in 1901 is:
+
+```{r}
+deaths <- 25+20
+Pyear  <- (200+130)/2
+rate   <- deaths/Pyear
+rate
+
+```
+
+Sometimes statistical offices release midyear population estimates, derived either directly from population registers or on the basis of demographic accounting. There are also plenty of other approximations out there.
+
+
+# Death rates (all-cause)
+
+* Events (occurrences): deaths
+* Exposure: All person-years lived in the time interval
+
+## Crude death rate
+
+The crude death rate (CDR) is a measure of the risk of death for a whole population: 
+
+$$
+CDR[t,n] = \frac{Number~of~deaths~in~the~population~between~times~t~and~t+n}{Number~of~person-years~lived~in~the~population~between~times~t~and~t+n}
+$$
+
+```{r}
+
+# Person-years
+ES2014 %>% 
+  filter(Sex == "Total") %>% 
+  summarize(Exposure = (sum(P2014) + sum(P2015)) / 2,
+            Deaths = sum(Deaths)) %>% 
+  mutate(CDR = Deaths / Exposure)
+
+
+```
+
+## Age-specific death rates
+
+Age-specific death rates ($M$) measure the risk of death by age $x$ (or between age $x$ and $x+n$) in the population: 
+
+$$
+_nM_x[0,T]= \frac{Number~of~deaths~in~the~age~range~x~to~x+n~between~times~T~and~T+t}{Number~of~person-years~lived~in~the~age~range~x~to~x+n~between~times~T~and~T+t}
+$$
+
+This measure controls for the effect of population age-structure, i.e. some populations have older age-structure than others resulting in higher CDR even if the $_nM_x$ are smaller at most ages. The age interval width $n$ and calendar interval $t$ are up to you and the data.
+
+```{r}
+
+# Person-years by age
+ES2014 <-
+  ES2014 %>% 
+  mutate(Exposure = (P2014 + P2015) / 2,
+         M = Deaths / Exposure) 
+
+ES2014 %>% 
+  filter(Sex == "Total") %>% 
+  ggplot(aes(x = Age, y = M)) + 
+  geom_line() + 
+  scale_y_log10() + 
+  labs(title = "Age-specific mortality rates for Spain (total population)",
+       y = "log mortality")
+
+```
+
+
+# Fertility rates
+
+* Events: births
+* Exposure: every women alive in their reproductive age ( $\approx$ 15 to 50 years old)
+
+
+## Crude birth rate
+
+The crude birth rate (CBR) is a loose measure of occurrence/exposure of fertility: 
+
+$$
+CBR[0,T] = \frac{Number~of~births~in~the~population~between~times~T~and~T+t}{Number~of~person-years~lived~in~the~population~between~times~T~and~T+t}
+$$
+```{r}
+
+# Person-years
+ES2014 %>% 
+  filter(Sex == "Total") %>% 
+  summarize(Exposure = sum(Exposure),
+            Births = sum(Births, na.rm = TRUE)) %>% 
+  mutate(CBR = Births / Exposure)
+
+
+```
+
+## General fertility rate
+
+The general fertility rate (GFR) is generally considered a better measure of fertility, as only women in their reproductive ages can give birth, and are thus at risk of experiencing the event.
+
+$$
+GFR[0,T] = \frac{Number~of~births~in~the~population~between~times~T~and~T+t}{Number~of~person-years~lived~by~women~aged~15~to~50~between~times~T~and~T+t}
+$$
+
+```{r}
+# Female population in 2014 and 2015 at reproductive ages
+
+B2 <- ES2014 %>% 
+  filter(!is.na(Births)) %>% 
+  mutate(Sex = "Female") %>% 
+  select(Sex, Age, Births)
+
+ES2014_2 <- 
+  ES2014 %>% 
+  select(-Births) %>% 
+  left_join(B2, by = c("Sex","Age")) 
+
+
+# filter down to required subset, then do the calcs
+
+ES2014_2 %>% 
+  filter(Sex == "Female",
+         Age >= 15,
+         Age < 50) %>% 
+  summarize(Exposure = sum(Exposure),
+            Births = sum(Births)) %>% 
+  mutate(GFR = Births / Exposure)
+
+```
+
+
+## Age-specific fertility rates
+
+As with age-specific death rates, age-specific fertility rates ($F$) are less sensitive to the age structure of the population. This measure provides the risk of given birth from women age $x$ to $x+n$:
+
+
+$$
+_nF_x[0,T]= \frac{Number~of~births~between~times~T~and~T+t~to~women~aged~x~to~x+n}{Number~of~person-years~lived~by~women~aged~x~to~x+n~between~times~T~and~T+t}
+$$
+```{r}
+
+ES2014_2 %>% 
+  filter(Sex == "Female",
+         !is.na(Births)) %>% 
+  mutate(ASFR = Births / Exposure) %>% 
+  ggplot(aes(x = Age, y = ASFR)) + 
+  geom_line() +
+  labs(title = "Age-specific fertility rates (Spain 2014")
+
+
+```
+
+## Total fertility rate
+
+The total fertility rate (TFR) is the average number of children a woman would have if she experienced the a particular set of age-specific fertility rates and survived until the end of her reproductive age. "*The TFR is the single most important indicator of fertility*" [@preston2001demography]. It is also the area under the ASFR curve.
+
+$$
+TFR[T,T+t]= n \sum_{x=a}^{B-n} {}_nF_x [T,T+t]
+$$ 
+where $a$ and $B$ are the minimum and maximum age at childbearing.
+
+```{r}
+
+# TFR
+ES2014_2 %>% 
+  filter(Sex == "Female",
+         !is.na(Births)) %>% 
+  mutate(ASFR = Births / Exposure,
+         n = 1) %>% # make this 5 if you have 5-year age groups!!
+  summarize(TFR = sum(ASFR))
+
+
+```
+
+
+## Mean age at childbearing
+The mean age at childbearing is not a rate, but is based on the age-specific fertility rates. The mean age at childbearing (MA) is the average age of mothers at childbearing, standardized for the age-structure of the female population at reproductive age [@HFD].
+
+$$
+MA[T,T+t] = \frac{\sum_{x=a}^{B-n} \bar{x} * {}_nF_x [T,T+t]}{ \sum_{x=a}^{B-n} {}_nF_x [T,T+t]}
+$$
+where $\bar{x}$ is the mid-age of interval $x:x+n$, i.e. $\bar{x} = x+ n/2$.
+
+```{r}
+
+# MA
+ES2014_2 %>% 
+  filter(Sex == "Female",
+         !is.na(Births)) %>% 
+  mutate(ASFR = Births / Exposure,
+         n = 1,
+         xbar = Age + n / 2) %>% 
+  summarize(MA = sum(xbar * ASFR) / sum(ASFR))
+
+
+```
+
+
+
+# Exercises {-}
+
+Load the data `PopulationSpain.txt` and `BirthsSpain.txt`
+
+
+* Calculate age-specific fertility rates from 1950 until 2014 (annually) from age 12 to 55. Skip the year 1975!
+* Plot the age-specific rates in 1950 and 2014.
+* Calculate the TFR at each year.
+* Plot TFR over time.
+* Calculate the mean age at birth over time.
+* Plot the mean age over time.
+
+
+# References {-}
