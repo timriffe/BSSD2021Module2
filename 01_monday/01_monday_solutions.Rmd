@@ -1,0 +1,166 @@
+---
+title: |
+  | Barcelona Summer School of Demography
+  | \vspace{1.5cm} \LARGE \emph{Module~2.~Demography with R}
+  | \vspace{0.3cm} \huge \textbf{1.~Basic Demographic Measures}\vspace{0.6cm}
+fontsize: 11pt
+geometry: a4paper, twoside, left=2.5cm, right=2.5cm, top=3.2cm, bottom=2.8cm, headsep
+  = 1.35cm, footskip = 1.6cm
+output:
+  pdf_document:
+    number_sections: yes
+  html_document2: default
+  html_document:
+    number_sections: yes
+    toc: yes
+  pdf_document2: default
+  header-includes:
+    - \usepackage{titling}
+    - \pretitle{\begin{center}\includegraphics[trim=0 0 0 8cm, width=6cm]{logotipCED.png}\\[\bigskipamount]}
+    - \posttitle{\end{center}}
+    - \usepackage{fancyhdr}
+    - \pagestyle{fancy}
+    - \fancyhead[LE]{\thepage~\qquad~Barcelona Summer School of Demography}
+    - \fancyhead[RE]{Module~2.~Demography with R}
+    - \fancyhead[LO]{Basic Demographic Measures}
+    - \fancyhead[RO]{Tim Riffe\qquad~\thepage}
+    - \fancyfoot[CO,CE]{\includegraphics[width=2.8cm]{logotipCED.png}}
+subtitle: Basic Demographic measures
+bibliography: bibliography.bib
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+\noindent\makebox[\textwidth][c]{
+  \begin{minipage}[t]{0.45\textwidth}
+    \centering
+    \Large{Tim Riffe} \\
+    \vspace{0.1cm}\large{\texttt{tim.riffe@gmail.com}}
+  \end{minipage}
+}
+
+
+\vspace{0.8cm}
+\begin{center}
+\large{5 July 2021}
+\end{center}
+\vspace{0.8cm}
+
+
+# Exercises
+
+## Load the data `PopulationSpain.txt` and `BirthsSpain.txt`
+
+```{r}
+library(tidyverse)
+library(readr)
+#Birth counts in 2014
+
+B  <- read_delim("BirthsSpain.txt", 
+                 delim = " ",
+                 trim_ws = TRUE,
+                 skip = 2) %>% 
+      mutate(Age = parse_number(Age)) %>% 
+      select(Year, Age, Births = Total) 
+
+P  <- read_delim("PopulationSpain.txt", 
+                 delim = " ",
+                 trim_ws = TRUE,
+                 skip = 2,
+                 col_types = "ccddd") %>% 
+      mutate(Age = parse_number(Age)) %>% 
+      pivot_longer(Female:Total,
+                   names_to = "Sex",
+                   values_to = "Population") %>% 
+      arrange(Year, Sex, Age) 
+```
+
+Note: there was some sort of universe adjustment in the Spanish data in 1975. Possibly a switch from *de facto* to *de jure* population definition. HMD codes such changes to a moment in time, with `-` suffix on the *before* populaton and a `+` suffix on the *after* population. Accounting for this adds some additional logic to the code, but we can pass over that. Actually we could also just remove 1975 altogether if so inclined.
+
+## Calculate age-specific fertility rates from 1950 until 2014 (annually) from age 12 to 55. Skip the year 1975 (if you want to make this easier!).
+
+I'm going to do this the tidy way, first calculating exposure, then merging with births, then calculating rates using `mutate()`. Two helper functions are `nchar()`, which tells you the number of characters in string (`Year` in our case) and `grepl()` which gives logical character pattern matching (i.e. `TRUE` if there's a match, otherwise `FALSE`).
+```{r}
+# Jan 1 pops
+P1 <-
+  P %>% 
+  filter(Sex == "Female",
+         nchar(Year) == 4 | Year == "1975+") %>% 
+  mutate(side = "left",
+         Year = parse_number(Year))
+# Dec 31 pops
+P2 <- 
+  P %>% 
+  filter(Sex == "Female",
+         nchar(Year) == 4 | Year == "1975-") %>% 
+  mutate(side = "right",
+         Year = parse_number(Year),
+         Year = Year - 1)
+# stick together, put side by side. 
+# could have also just joined...)
+ES <- 
+  P1 %>% 
+  bind_rows(P2) %>% 
+  pivot_wider(names_from = "side", values_from = "Population", names_prefix = "P_") %>% 
+  
+  # calculate exposure
+  mutate(Exposure = (P_left + P_right) / 2) %>% 
+  
+  # now RIGHT joint to births 
+  # (cuts down exposure to just ages where there is fertility)
+  right_join(B, by = c("Year","Age")) %>% 
+  # Calculate ASFR
+  mutate(ASFR = Births / Exposure)
+```
+
+## Plot the age-specific rates in 1950 and 2014.
+
+```{r}
+ES %>% 
+  filter(Year %in% c(1950, 2014)) %>% 
+  ggplot(aes(x = Age, y = ASFR, color = as.factor(Year), group = Year)) + 
+  geom_line() + 
+  scale_color_discrete()
+```
+
+## Calculate the TFR at each year.
+
+```{r}
+TFR <- 
+  ES %>% 
+  group_by(Year) %>% 
+  summarize(TFR = sum(ASFR))
+```
+
+## Plot TFR over time.
+
+```{r}
+TFR %>% 
+  ggplot(aes(x = Year, y = TFR)) + 
+  geom_line()
+```
+
+
+## Calculate the mean age at birth over time.
+
+```{r}
+MAB <-
+  ES %>% 
+  mutate(Agemid = Age + .5) %>% 
+  group_by(Year) %>% 
+  summarize(MAB = sum(Agemid * ASFR) / sum(ASFR))
+```
+
+## Plot the mean age over time.
+
+```{r}
+MAB %>% 
+  ggplot(aes(x = Year, y = MAB)) + 
+  geom_line()
+```
+
+
+
+
