@@ -396,7 +396,7 @@ LT <-
          Lx = n * lx + (n - ax) * dx,
          Tx = Lx %>% rev() %>% cumsum() %>% rev(),
          ex = Tx / lx,
-         ex = ifelse(is.nan(ex),ax,ex)) %>% 
+         ex = ifelse(is.nan(ex),ax,ex))  %>% # hack
   ungroup()
 ```
 
@@ -406,9 +406,18 @@ LT <-
 The result is a multi-column life table where each column informs on an aspect of mortality for each year-sex combination in this data series. Yay! 
 
 ```{r message=F, warning=F}
-head(LT)
+head(LT) %>% head()
 
 ```
+
+```{r}
+LT %>% 
+  filter(Year == 1908, Sex == "female") %>% 
+  ggplot(aes(x = Age, y = ex)) + 
+  geom_line()
+
+```
+
 
 # Visualizing the results
 

@@ -53,7 +53,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Load the data `PopulationSpain.txt` and `BirthsSpain.txt`
 
-```{r}
+```{r, message = FALSE}
 library(tidyverse)
 library(readr)
 #Birth counts in 2014
@@ -87,14 +87,14 @@ I'm going to do this the tidy way, first calculating exposure, then merging with
 P1 <-
   P %>% 
   filter(Sex == "Female",
-         nchar(Year) == 4 | Year == "1975+") %>% 
+         Year != "1975-") %>% 
   mutate(side = "left",
          Year = parse_number(Year))
 # Dec 31 pops
 P2 <- 
   P %>% 
   filter(Sex == "Female",
-         nchar(Year) == 4 | Year == "1975-") %>% 
+        Year != "1975+") %>% 
   mutate(side = "right",
          Year = parse_number(Year),
          Year = Year - 1)
@@ -103,7 +103,9 @@ P2 <-
 ES <- 
   P1 %>% 
   bind_rows(P2) %>% 
-  pivot_wider(names_from = "side", values_from = "Population", names_prefix = "P_") %>% 
+  pivot_wider(names_from = "side", 
+              values_from = "Population", 
+              names_prefix = "P_") %>% 
   
   # calculate exposure
   mutate(Exposure = (P_left + P_right) / 2) %>% 
@@ -120,7 +122,10 @@ ES <-
 ```{r}
 ES %>% 
   filter(Year %in% c(1950, 2014)) %>% 
-  ggplot(aes(x = Age, y = ASFR, color = as.factor(Year), group = Year)) + 
+  ggplot(aes(x = Age, 
+             y = ASFR, 
+             color = as.factor(Year), 
+             group = Year)) + 
   geom_line() + 
   scale_color_discrete()
 ```
@@ -153,6 +158,8 @@ MAB <-
   summarize(MAB = sum(Agemid * ASFR) / sum(ASFR))
 ```
 
+A weighted average is the sum of the (thing being weighted multiplied by the weights) divided by the sum of the weights.
+
 ## Plot the mean age over time.
 
 ```{r}
@@ -161,6 +168,12 @@ MAB %>%
   geom_line()
 ```
 
-
-
+## ad hoc request
+Elizabeth was wondering what accounts for the dip in MAB in 1980. For that one would want to compare ASFR, maybe standardized to sum to 1, in 1980 and some time before and after. In class I just did a path scatter plot relating it to TFR, and we see these things seem to move together along a path. For a while it seemed like a circle would close, but then it didn't. Hmmm.
+```{r}
+MAB %>% 
+  left_join(TFR) %>% 
+  ggplot(aes(x= TFR, y = MAB, color = Year)) + 
+  geom_point(size = 3)
+```
 
