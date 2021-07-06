@@ -1,0 +1,467 @@
+---
+title: |
+  | Barcelona Summer School of Demography
+  | \vspace{1.5cm} \LARGE \emph{Module~2.~Demography with R}
+  | \vspace{0.3cm} \huge \textbf{2.~Life Table and Mortality Analysis}\vspace{0.6cm}
+fontsize: 11pt
+geometry: a4paper, twoside, left=2.5cm, right=2.5cm, top=3.2cm, bottom=2.8cm, headsep
+  = 1.35cm, footskip = 1.6cm
+output:
+  pdf_document:
+    number_sections: yes
+  html_document2: default
+  html_document:
+    number_sections: yes
+    toc: yes
+  pdf_document2: default
+  header-includes:
+    - \usepackage{titling}
+    - \pretitle{\begin{center}\includegraphics[trim=0 0 0 8cm, width=6cm]{logotipCED.png}\\[\bigskipamount]}
+    - \posttitle{\end{center}}
+    - \usepackage{fancyhdr}
+    - \pagestyle{fancy}
+    - \fancyhead[LE]{\thepage~\qquad~Barcelona Summer School of Demography}
+    - \fancyhead[RE]{Module~2.~Demography with R}
+    - \fancyhead[LO]{Life Table and Mortality Analysis}
+    - \fancyhead[RO]{Tim Riffe\qquad~\thepage}
+    - \fancyfoot[CO,CE]{\includegraphics[width=2.8cm]{logotipCED.png}}
+subtitle: Basic Demographic measures
+bibliography: bibliography.bib
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+\noindent\makebox[\textwidth][c]{
+  \begin{minipage}[t]{0.45\textwidth}
+    \centering
+    \Large{Tim Riffe} \\
+    \vspace{0.1cm}\large{\texttt{tim.riffe@gmail.com}}
+  \end{minipage}
+}
+
+
+\vspace{0.8cm}
+\begin{center}
+\large{6 July 2021}
+\end{center}
+\vspace{0.8cm}
+
+
+\tableofcontents
+
+
+# Prelims
+
+## Thanks again to MP
+Again, this material originates with rock star Marie-Pier. I have translated it to a tidy approach, which works particularly well for lifetables.
+
+## packages we either will or might use today
+
+Go ahead and install this:
+
+```{r, eval = FALSE}
+install.packages("demography")
+```
+
+Otherwise, we'll be using packages from yesterday, like `tidyverse` and `ggplot2`.
+
+```{r}
+library(demography)
+library(tidyverse)
+```
+
+
+## R functions
+
+`cumprod`: Returns the cumulative product of an object (vector, matrix or array).
+```{r error=F, message=F, warning=F}
+#Example
+
+X <- seq(2,10, 2)
+cumprod(X)
+
+```
+
+`cumsum`: Returns the cumulative sum of an object (vector, matrix or array).
+```{r error=F, message=F, warning=F}
+cumsum(X)
+```
+
+`ifelse()`: This toggles a result depending on whether the first argument evaluates to `TRUE` or `FALSE`. There are three parts, first a logical statement to evaluate, second what to do if it's true, and third what to do if it's false.
+```{r}
+ifelse(X >5,"Higher than 5","Lower than 5")
+```
+
+`case_when()`: This is a *tidy* helper function for when you have lots of conditional cases and `ifelse()` or other options can become cumbersome. `case_when()` let's you list out logicals and what to do in each case. Lines are executed in order, where later lines do not overwrite earlier ones.
+
+```{r}
+case_when(X < 3 ~ "A",
+          X < 5 ~ "B", # this is only activated if the < 3 condition
+                       # was FALSE
+          TRUE ~ "C")  # This is a catch-all, to pick up the rest
+```
+When using `case_when()` like the above, arrange logicals in order from the most specific to the most general.
+
+`rev()`: reverse an R object
+```{r error=F, message=F, warning=F}
+X
+rev(X)
+```
+
+`for(){}`: For loop, i.e. iterate over a data object.
+
+```{r error=F, message=F, warning=F}
+A<-c(1:5)
+for(i in 1:5){
+  A[i]<-A[i]/2
+}
+A
+
+```
+
+
+# Human Mortality Database
+
+The Human Mortality Database (HMD) is an important database, offering detailed mortality and population data to researchers interested in understanding human mortality and longevity [@HMD]. It groups information on 40 countries or areas and use a common protocol to process data from all countries.
+
+Access to the data are free! Please register now (www.mortality.org), we will use this dataset for the rest of the class.
+
+There are two ways to use the HMD data in R:
+
+* Copy-paste the data in a .txt document, save it and then read it using the read.table() command.
+* Use a R package allowing to load the data directly in R - e.g. *demography* [@demographyR] and *HMDHFDplus* [@HMDHFDR].
+
+
+
+## Using the *demography* package to load HMD data
+
+The *demography* package [@demographyR] has a command named hmd.mx which allows one to upload mortality rates ($m_x$) and population counts data directly from the HMD.
+
+
+```{r message=F, warning=F, echo = FALSE, results = "hide"}
+# install.packages("demography")
+library(demography)
+
+# insert you username and password, then uncomment and run this.
+data <- hmd.mx("ESP", us, pw)
+
+# # Data structure
+# str(data)
+```
+
+```{r message=F, warning=F}
+# install.packages("demography")
+library(demography)
+
+# insert you username and password, then uncomment and run this.
+# data <- hmd.mx("ESP", "your_user_name", "your_password")
+
+# Data structure
+str(data)
+```
+
+First, note this data is not tidy... Please excuse me while I tidy it up for later use. This chunk you can examine if you want, but I don't intend to narrate it much. In this case `exposure` has been called `pop`, and we don't need extra exposure calcs.
+
+```{r}
+library(tidyverse)
+sexes <- data$pop %>% names()
+
+# two containers, columns given, but no rows
+ESpop   <- tibble(Year = NULL, Age = NULL, Sex = NULL, Exposure = NULL)
+ESrates <- tibble(Year = NULL, Age = NULL, Sex = NULL, M = NULL)
+
+for (i in sexes){
+  ESpop <- data$pop[[i]] %>% 
+    as_tibble() %>% 
+    rownames_to_column("Age") %>% 
+    pivot_longer(cols = -Age,     
+                 names_to = "Year", 
+                 values_to = "Exposure") %>% 
+    mutate(Sex = i,
+           Age = as.integer(Age) - 1) %>% 
+    bind_rows(ESpop)
+  
+  ESrates  <- data$rate[[i]] %>% 
+    as_tibble() %>% 
+    rownames_to_column("Age") %>% 
+    pivot_longer(cols = -Age, names_to = "Year", values_to = "M") %>% 
+    mutate(Sex = i,
+           Age = as.integer(Age) - 1) %>% 
+    bind_rows(ESrates)
+}
+
+ES <- left_join(ESpop, 
+                ESrates,
+                by = c("Age", "Year", "Sex")) %>% 
+  select(Year, Sex, Age, Exposure, M) %>% 
+  arrange(Year, Sex, Age)
+
+```
+
+
+# Life table
+
+The life table is one of the most important demographic tools. It takes the form of a table, where each column consists of a different age-specific mortality indicator. As put by @preston2001demography, "*it is a table that displays various pieces of information about the dying out of a birth cohort*".
+
+However, data for cohorts are often incomplete as it might take over 100 years or more for a cohort to die out. Data for cohorts are also often unavailable or outdated. Demographers thus came up with the concept of the *period* life table and *synthetic* cohort.
+
+**Period life table**: It is similar to a cohort life table, but "*the information attempts to show what would happen to a cohort if it were subjected for all of its life to the mortality conditions of that period*" [@preston2001demography].
+
+**Synthetic cohort**: Hypothetical cohort if certain mortality conditions pertained through its life - e.g. if it experienced death rates observed in one calendar year.
+
+One can also think of the period lifetable as an *annualization* of observed rates, in the sense that some of the lifetable columns are conveniently and intuitively expressed in year units.
+
+Because period life tables are often used, we will focus on this construct. However, note that the calculation of a cohort life table is the same of that of a period life table. The only difference is that a cohort life table starts from death *probabilities* between age x and x+n ($_nq_x$) and a period life table starts from death *rates* between age $x$ and $x+n$ ($_nm_x$).
+
+
+## Death rates between age x and x+n $_nm_x$
+
+As mentioned in the previous class, age-specific death rates are the risk of dying in a specific age interval. Death rates ($_nm_x$) are calculated from observed death counts and exposure to risk (person-years). A period life table starts from this indicator.
+
+```{r message=F, warning=F}
+
+# Extract death rates with the demography package and include them in the life table
+
+ES %>% 
+  filter(Year %in% c(1922, 2018),
+         Sex == "female") %>% 
+  ggplot(aes(x = Age, y = M, color = Year)) + 
+  geom_line() + 
+  scale_y_log10() + 
+  labs(title = "Female mortality rates in 1922 and 2018",
+       subtitle = "My, how things have changed",
+       caption = "Data: HMD")
+```
+Look, you can see some age heaping in 1922 rates! Is it in both the numerator and the denominator?
+
+## Death probabilities between age x and x+n $_nq_x$
+
+The first and key step is to transform a set of age-specific death rates into a set of age-specific probabilities of dying ($_nq_x$). The relation between $_nm_x$ and $_nq_x$ have been established based on analyses of actual cohorts (for mathematical proof, see @preston2001demography, p. 42-43). 
+
+$$
+_nq_x = \frac{n*_nm_x}{1+(n-_na_x)_nm_x}
+$$
+where $_na_x$ is the average number of person-years lived in the interval by those dying in the interval and $n$ is the length of the age-interval.
+
+Generally, $_na_x = n/2$ with the exceptions of the first and the last age group. Other approximations are also available, but these only matter when age groups are wider than a year.
+
+Infant mortality tends to occur in the first months after birth. Thus, the deaths do not occur, on average, at the mid-point ($n/2$) of the interval, but closer to age 0. In recent years, for females, $_1a_0 = 0.14903 - 2.05527* _1m_0$ [@HMD]. See the HMD protocol at http://www.mortality.org/Public/Docs/MethodsProtocol.pdf [@HMD, p.37] for more details. I have simplified the HMD piecewise approach by averaging male and female model results. 
+
+```{r, eval = FALSE}
+ # example of using case_when()
+  case_when(M < .02012 ~ .14916 - 2.02536 * M,
+            M < .07599 ~ 0.037495 + 3.57055 * M,
+            M >= .07599 ~ 0.30663)
+```
+
+We'll use this approximation for all sex strata, but if you were doing serious work you'd want to use a more nuanced approach. Not to imply that this this detail is worth losing sleep over, but really it doesn't overly complicate the code once you get going.
+
+The last age group is usually an open age interval - e.g. 85+ or 110+. People dying in this open interval are thus susceptible to live, on average, longer than $n/2$ years. For the last age interval, here 110+, $_{\infty} a_{110} = 1/ _{\infty} m_{110}$. That's a good-enough approximation in ages as high as 110, but for lower open age groups it's better to close out more thoughtfully, possibly by extrapolating mortality rates.
+
+In a life table, $_{\infty}q_{110+}$ is equal to 1, as every member of a cohort has to die in the last age group.
+
+```{r message=F, warning=F}
+
+# NOTE: take care to handle closeout NAs!!! 
+# They screw up the whole lifetable!
+
+# Set nx and ax
+LT <- 
+  ES %>% 
+  mutate(M = ifelse(is.na(M), .5, M),         # hack
+         n = 1,
+         ax = case_when(
+                Age == 0 & M < .02012 ~ .14916 - 2.02536 * M,
+                Age == 0 & M < .07599 ~ 0.037495 + 3.57055 * M,
+                Age == 0 & M >= .07599 ~ 0.30663,
+                Age == 110 ~ 1 / M,
+                TRUE ~ n / 2),
+         ax = ifelse(is.infinite(ax),.5,ax),  # hack
+         qx = (M * n) / (1 + (n - ax) * M),
+         qx = ifelse(qx > 1, 1, qx))          # hack
+```
+Notes on the above: 
+
+1. There are `NA` values of $M_x$ in some very high ages where most likely no one was alive and so no one died. We could either truncate the lifetable at the highest non-`NA` value, or else impute something. In this case, you could say there was no mortality observed, and impute a 0. Or, since these values are in the highest ages that ought to be subject to high rates, we could impute a high value. I chose to just impute a rate of .5. A more aesthetic thing to do would be to smooth the final ages, including some sort of extrapolation. These choices have little leverage on life expectancy, but could be consequential for other lifetable measures.
+2. $a_x$ can evaluate to infinity in the open age group if the closeout $M_\omega$ happens to be 0. In this case again we should impute, and it won't make a difference to summary results to just plug in a number like `0.5`.
+3. The formula for $q_x$ can produce values greater than 1 if $a_x$ isn't well estimated. In our case this happens a few times in ages where $M_x$ is very high, but where we've assumed `0.5` for $a_x$. 
+
+
+```{r}
+
+LT %>% 
+  filter(Year == 2014,
+         Sex == "female") %>% 
+  ggplot(aes(x = Age, y = qx)) + 
+  geom_line() + 
+  scale_y_log10()
+```
+
+
+## Survival probabilities between age $x$ and $x+n$, $_np_x$
+
+The survival probabilities between age $x$ and $x+n$ ($_np_x$) is simply one minus $_nq_x$. It is interpreted as the chance of surviving from age x to age x+n.
+
+$$
+_np_x = 1- _nq_x
+$$
+
+## Survival probabilities to age $x$, $l_x$
+
+This indicator indicates the chance of surviving from birth to age x ($l_x$) OR the number of survivors at age $x$ relative to the radix of the life table. The $l_0$ is interpreted as the initial size (radix) of the population, generally set to 1 or 100,000. There are three ways of calculating this indicator:
+
+Option 1 :
+$$
+l_{x+n} = r \prod_{y=0}^x {}_np_y
+$$
+
+
+Option 2 :
+$$
+l_{x+n} = l_x * {}_np_x
+$$
+
+Option 3:
+
+$$
+l_{x+n} = l_{x} - _nd_x 
+$$
+
+**Note**: $l_1 = _0p_1$
+
+
+## Death distribution, $_nd_x$
+
+The life table deaths ($_nd_x$) is the number of persons dying between age x and x+n, relative to the radix, and represents the distribution of deaths over age. There is two ways of calculating $_nd_x$.
+
+Option 1:
+
+$$
+_nd_x = _nq_x * l_x
+$$
+Option 2:
+
+$$
+_nd_x = l_x - l_{x+n} 
+$$
+
+## Person-years lived between age $x$ and $x+n$, $_nL_x$
+
+The number of person-years between age $x$ and $x+n$ ($_nL_x$) is calculated as:
+
+$$
+_nL_x = n(l_x - _nd_x) + _na_x*_nd_x \\
+$$
+$$
+= n * l_x + (n-_na_x) _nd_x
+$$
+**Note**
+
+$_nm_x = _nd_x/_nL_x$
+
+and 
+
+$_nq_x = _nd_x/l_x$
+
+
+
+## Person-years lived above age x $T_x$
+
+Calculating the number person-years lived above age x ($T_x$) is a key step to calculate life expectancy. It consists in finding the sum of $_nL_x$ from age x:
+
+$$
+T_x = \sum_{y=x}^{\infty} {}_nL_y
+$$
+
+
+## Life expectancy $e_x$
+
+The last indicator in the life table is probably one of the most used in demographic analysis. The life expectancy is the average number of years lived by a (synthetic) cohort reaching age x. It consists in dividing the number of person-years lived above age x by the number of people alive at age x:  
+
+$$
+e_x = \frac{T_x}{l_x}
+$$
+Since `mutate()` let's you make columns in a sequentially dependent way, we can actually do this whole lifetable inside a single `mutate()` statement. However, each combination of `Year` and `Sex` is an independent lifetable, so we need to declare groups beforehand using `group_by()`:
+
+```{r}
+radix <- 1e5 # 100k this is an arbitrary convention
+LT <-
+  LT %>% 
+  group_by(Year, Sex) %>% 
+  mutate(px = 1 - qx,
+         lx = radix * c(1, cumprod(px[-n()])),
+         dx = qx * lx,
+         Lx = n * lx + (n - ax) * dx,
+         Tx = Lx %>% rev() %>% cumsum() %>% rev(),
+         ex = Tx / lx,
+         ex = ifelse(is.nan(ex),ax,ex)) %>% 
+  ungroup()
+```
+
+
+
+## The final life table
+The result is a multi-column life table where each column informs on an aspect of mortality for each year-sex combination in this data series. Yay! 
+
+```{r message=F, warning=F}
+head(LT)
+
+```
+
+# Visualizing the results
+
+Since the data are tidy, we can plot at will
+
+## Life expectancy at age 0
+
+A time series of life expectancy at birth
+
+```{r message=F, warning=F}
+x = 0
+LT %>% 
+  filter(Age == x, Sex == "total") %>% 
+  ggplot(aes(x = Year, y = ex, group = 1)) +
+    geom_line() +
+    ylab(paste("Life expectancy at age", x)) +
+    scale_x_discrete(breaks = seq(1910,2010,by=10))+
+    xlab("Year") +
+    theme_bw()
+```
+
+## death distribution
+
+The death distribution is packed with information. You can calculate statistical summary measures on it just like any statistical distribution (just divide out radix). Let's not forget this refers to a hypothetical cohort though!
+```{r}
+LT %>% 
+  filter(Year == 2018, Sex != "total") %>% 
+  ggplot(aes(x = Age, y = dx, color = Sex)) +
+        geom_line() +
+        ylab("Death distribution") +
+        xlab("Age") +
+        theme_bw()
+```
+
+## survival curve
+
+Lifetable survivorship, here plotted with a radix of 1, is interpreted as the probability of surviving from 0 until age $x$.
+
+```{r}
+LT %>% 
+  filter(Year == 2018, Sex != "total") %>% 
+  ggplot(aes(x = Age, y = lx / 1e5, color = Sex)) +
+        geom_line() +
+        ylab("Survivorship") +
+        xlab("Age") +
+        theme_bw()
+```
+
+# Exercises {-}
+
+1. Choose a country in the HMD and calculate its life table for at least 20 consecutive years. 
+2. Compare your results with results with those in the HMD.
+3. Plot $_nm_x$, $_nl_x$ and $_nd_x$ for the first and last year you chose. How did the different indicators change over time?
+4. Plot $e_0$ and $e_{65}$ over time. How did life expectancy change over time?
+
+# References {-}
