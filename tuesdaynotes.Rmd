@@ -185,7 +185,7 @@ LT <-
          px = 1 - qx,
          lx = radix * c(1, cumprod(px[-n()])),
          dx = qx * lx,
-         Lx = n * lx + (n - ax) * dx,
+         Lx = n * lx - (n - ax) * dx,
          Tx = Lx %>% rev() %>% cumsum() %>% rev(),
          ex = Tx / lx,
          ex = ifelse(is.nan(ex),ax,ex))  %>%  # hack nr 4

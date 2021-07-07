@@ -355,7 +355,7 @@ $$
 _nL_x = n(l_x - _nd_x) + _na_x*_nd_x \\
 $$
 $$
-= n * l_x + (n-_na_x) _nd_x
+= n * l_x - (n-_na_x) _nd_x
 $$
 **Note**
 
@@ -393,7 +393,7 @@ LT <-
   mutate(px = 1 - qx,
          lx = radix * c(1, cumprod(px[-n()])),
          dx = qx * lx,
-         Lx = n * lx + (n - ax) * dx,
+         Lx = n * lx - (n - ax) * dx,
          Tx = Lx %>% rev() %>% cumsum() %>% rev(),
          ex = Tx / lx,
          ex = ifelse(is.nan(ex),ax,ex))  %>% # hack
