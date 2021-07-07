@@ -25,7 +25,7 @@ output:
     - \fancyhead[LO]{Life Table and Mortality Analysis}
     - \fancyhead[RO]{Tim Riffe\qquad~\thepage}
     - \fancyfoot[CO,CE]{\includegraphics[width=2.8cm]{logotipCED.png}}
-subtitle: Basic Demographic measures
+subtitle: Life Table
 bibliography: bibliography.bib
 ---
 
