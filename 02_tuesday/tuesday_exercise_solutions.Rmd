@@ -1,0 +1,120 @@
+---
+title: "tuesday exercise solutions"
+author: "Tim Riffe"
+date: "7/7/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Exercises {-}
+
+1. Choose a country in the HMD and calculate its life table for at least 20 consecutive years. 
+
+```{r}
+library(demography)
+
+# insert you username and password, then uncomment and run this.
+data <- hmd.mx("CHL", us, pw)
+library(tidyverse)
+sexes <- data$pop %>% names()
+
+# two containers, columns given, but no rows
+CHLpop   <- tibble(Year = NULL, Age = NULL, Sex = NULL, Exposure = NULL)
+CHLrates <- tibble(Year = NULL, Age = NULL, Sex = NULL, M = NULL)
+
+for (i in sexes){
+  CHLpop <- data$pop[[i]] %>% 
+    as_tibble() %>% 
+    rownames_to_column("Age") %>% 
+    pivot_longer(cols = -Age,     
+                 names_to = "Year", 
+                 values_to = "Exposure") %>% 
+    mutate(Sex = i,
+           Age = as.integer(Age) - 1) %>% 
+    bind_rows(CHLpop)
+  
+  CHLrates  <- data$rate[[i]] %>% 
+    as_tibble() %>% 
+    rownames_to_column("Age") %>% 
+    pivot_longer(cols = -Age, names_to = "Year", values_to = "M") %>% 
+    mutate(Sex = i,
+           Age = as.integer(Age) - 1) %>% 
+    bind_rows(CHLrates)
+}
+
+CHL <- left_join(CHLpop, 
+                CHLrates,
+                by = c("Age", "Year", "Sex")) %>% 
+  select(Year, Sex, Age, Exposure, M) %>% 
+  arrange(Year, Sex, Age)
+CHL
+
+```
+
+```{r}
+library(tidyverse)
+radix <- 1
+LT <-
+  CHL %>% 
+  group_by(Year, Sex) %>% 
+  mutate(M = ifelse(is.na(M), .5, M),         # hack
+         n = 1,
+         ax = case_when(
+                Age == 0 & M < .02012 ~ .14916 - 2.02536 * M,
+                Age == 0 & M < .07599 ~ 0.037495 + 3.57055 * M,
+                Age == 0 & M >= .07599 ~ 0.30663,
+                Age == 110 ~ 1 / M,
+                TRUE ~ n / 2),
+          ax = ifelse(is.infinite(ax),.5,ax),
+          qx = (M * n) / (1 + (n - ax) * M),
+          qx = ifelse(qx > 1, 1, qx),
+          px = 1 - qx,
+          lx = radix * c(1, cumprod(px[-n()])),
+          dx = qx * lx,
+          Lx = lx - (n - ax) * dx,
+          Tx = Lx %>% rev() %>% cumsum() %>% rev(),
+          ex = Tx / lx)
+```
+
+2. Compare your results with results with those in the HMD.
+
+```{r}
+LT %>% 
+  filter(Age == 0) %>% 
+  select(Sex, ex) %>% 
+  pivot_wider(names_from = Sex, values_from = ex) %>% 
+  View()
+```
+
+3. Plot $_nm_x$, $_nl_x$ and $_nd_x$ for the first and last year you chose. How did the different indicators change over time?
+
+```{r}
+LT %>% 
+  filter(Year %in% c(1992, 2017),
+         Sex == "female") %>% 
+  ggplot(aes(x = Age, M, color = as.factor(Year))) +
+  geom_line() +
+  scale_y_log10()
+
+LT %>% 
+  filter(Year %in% c(1992, 2017),
+         Sex == "female") %>% 
+  ggplot(aes(x = Age, lx, color = as.factor(Year))) +
+  geom_line() +
+  geom_vline(xintercept  = 70) +
+  geom_hline(yintercept  = .78) +
+  geom_hline(yintercept  = .87)
+
+LT %>% 
+  filter(Year %in% c(1992, 2017),
+         Sex == "female") %>% 
+  ggplot(aes(x = Age, dx, color = as.factor(Year))) +
+  geom_line() 
+
+```
+
+
+4. Plot $e_0$ and $e_{65}$ over time. How did life expectancy change over time?
