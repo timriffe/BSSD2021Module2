@@ -514,7 +514,11 @@ LT %>%
 
 ```
 
-An extension of the Arriaga method decomposing life expectancy by age AND cause of death is also available (see @preston2001demography). There are also generalized decomposition methods that you can use to decompose any function of parameters. Can be demonstrated on request.
+An extension of the Arriaga method decomposing life expectancy by age AND cause of death is also available (see @preston2001demography). There is also an extension for healthy life expectancy (see @shkolnikov2017decomposition).
+
+# Generalized decomposition
+Kitagawa decomposition is applicable to quantities calculated as sum products, for example weighted means where the weights might differ in the groups compared. Arriaga decomposition works with life tables and life expectancy, and so we call it a *bespoke* decomposition. That means that an analytic solution has been proposed that allows for the decomposition to be directly calculated. Three such methods are the method of step-wise replacement
+
 
 # Exercises {-}
 
