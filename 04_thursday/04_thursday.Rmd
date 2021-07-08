@@ -1,0 +1,800 @@
+
+---
+title: |
+  | Barcelona Summer School of Demography
+  | \vspace{1.5cm} \LARGE \emph{Module~2.~Demography with R}
+  | \vspace{0.3cm} \huge \textbf{3.~Standardization and decomposition}\vspace{0.6cm}
+fontsize: 11pt
+geometry: a4paper, twoside, left=2.5cm, right=2.5cm, top=3.2cm, bottom=2.8cm, headsep
+  = 1.35cm, footskip = 1.6cm
+output:
+  pdf_document:
+    number_sections: yes
+  html_document2: default
+  html_document:
+    number_sections: yes
+    toc: yes
+  pdf_document2: default
+  header-includes:
+    - \usepackage{titling}
+    - \pretitle{\begin{center}\includegraphics[trim=0 0 0 8cm, width=6cm]{logotipCED.png}\\[\bigskipamount]}
+    - \posttitle{\end{center}}
+    - \usepackage{fancyhdr}
+    - \pagestyle{fancy}
+    - \fancyhead[LE]{\thepage~\qquad~Barcelona Summer School of Demography}
+    - \fancyhead[RE]{Module~2.~Demography with R}
+    - \fancyhead[LO]{Population growth}
+    - \fancyhead[RO]{Tim Riffe\qquad~\thepage}
+    - \fancyfoot[CO,CE]{\includegraphics[width=2.8cm]{logotipCED.png}}
+subtitle: Population growth
+bibliography: bibliography.bib
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+\noindent\makebox[\textwidth][c]{
+  \begin{minipage}[t]{0.45\textwidth}
+    \centering
+    \Large{Tim Riffe} \\
+    \vspace{0.1cm}\large{\texttt{tim.riffe@gmail.com}}
+  \end{minipage}
+}
+
+
+\vspace{0.8cm}
+\begin{center}
+\large{8 July 2021}
+\end{center}
+\vspace{0.8cm}
+
+
+\tableofcontents
+
+
+# R functions
+`sweep()`: Return an array obtained from an input array by sweeping out a summary statistic.
+
+```{r error=F, message=F, warning=F}
+#Example
+
+Mat<-matrix(1:6, nrow=2, ncol=3)
+vec1<-c(1:2)
+vec2<-c(1:3)
+
+sweep(Mat, 1, vec1)
+sweep(Mat, 2, vec2)
+
+
+```
+
+
+
+# Matrix algebra: a brief review
+
+```{r}
+#Review of matrix algebra
+
+#matrix multiplication
+
+# Only possible if 
+#the number of columns on the left matrix = 
+#the number of rows on the right matrix
+
+#Example 1
+x<- matrix(c(1:9), ncol=3)
+x
+
+y<- matrix(c(1:6), ncol=2)
+y
+
+A<-x %*% y
+A
+
+A[1,1]
+sum(x[1,]*y[,1])
+#Example 2
+x<- matrix(c(1,2,3), ncol=1)
+x
+
+y<- matrix(c(2,4,6), nrow=1)
+y
+
+A<-x %*% y
+A
+
+
+#matrix addition
+
+B<-matrix(c(1:9), ncol=3)
+C<-matrix(c(2:10), ncol=3)
+
+D<-A+B
+D[1,1]
+A[1,1]+B[1,1]
+
+```
+
+
+# Data
+
+We will use the Spanish data from the HMD [@HMD] and HFD [@HFD] for section 2 and 3 of this class. Please load the following:
+
+```{r error=F, message=F, warning=F, echo=F}
+
+
+setwd("C:/Users/mpbergeron/Dropbox/Teaching/Barcelona Summer School/2019/Day 4")
+
+```
+
+
+```{r}
+
+#setwd()
+
+#Births in 2014
+
+B2014<-read.table("BirthsSpain2014.txt", header=T)
+B2014$Age<-as.character(B2014$Age)
+B2014$Age[B2014$Age=="12-"]<-"12"
+B2014$Age[B2014$Age=="55+"]<-"55"
+B2014$Age<-as.numeric(B2014$Age)
+
+#Deaths in 2014
+
+D2014<-read.table("DeathsSpain2014.txt", header=T)
+D2014$Age<-as.character(D2014$Age)
+D2014$Age[D2014$Age=="110+"]<-"110"
+D2014$Age<-as.numeric(D2014$Age)
+
+#Population in 2014 and 2015
+
+P2014<-read.table("PopulationSpain2014.txt", header=T)
+P2014$Age<-as.character(P2014$Age)
+P2014$Age[P2014$Age=="110+"]<-"110"
+P2014$Age<-as.numeric(P2014$Age)
+
+P2015<-read.table("PopulationSpain2015.txt", header=T)
+P2015$Age<-as.character(P2015$Age)
+P2015$Age[P2015$Age=="110+"]<-"110"
+P2015$Age<-as.numeric(P2015$Age)
+
+
+# 2014 Life table (calculated in class 2)
+
+LT<-read.table("LTSpain2014.txt", header=T)
+
+```
+
+
+# Crude growth
+
+## Balancing equation 
+
+Changes in population size is affected by changes in the number of births, deaths and migration.
+
+* Two ways on entry: Birth and Immigration
+* Two ways of exit: Death and Emigration
+
+As there are only two ways of entry and two ways of exit, changes in population size comes from changes in the magnitude of these flows:
+
+$$
+N(T) = N(0) + B[0,T]-D[0,T]+I[0,T]-E[0,T]
+$$
+
+
+where
+
+* $N(T)$ and $N(0)$ are the number of persons alive at time $T$ and $0$, respectively
+* $B[0,t]$ is the number of births between times 0 and T
+* $D[0,t]$ is the number of deaths between times 0 and T
+* $I[0,t]$ is the number of immigrations between times 0 and T
+* $E[0,t]$ is the number of emigrations between times 0 and T
+
+
+
+## Crude growth rate
+
+The crude growth rate is the change in population size relative to the person-year in a given time interval (e.g. from year 0 to T).
+
+Giving the balancing equation, the crude growth rate (CGR) of a population is equal to:
+
+$$
+\frac{N(T)-N(0)}{PY[0,T]} = \frac{B[0,T]}{PY[0,T]} - \frac{D[0,T]}{PY[0,T]} + \frac{I[0,T]}{PY[0,T]} - \frac{E[0,T]}{PY[0,T]}
+$$
+
+$$
+CGR[0,T] = \underbrace{CBR[0,T] - CDR[0,T]}_{CRNI[0,T]} + \underbrace{CIR[0,T] - CER[0,T]}_{CRNM_[0,T]}
+$$
+
+* $CBR[0,T]$ is the crude birth rate
+* $CDR[0,T]$ is the crude death rate
+* $CIR[0,T]$ is the crude immigration rate
+* $CER[0,T]$ is the crude emigration rate
+* $CRNI[0,T]$ is the crude rate of natural increase
+* $CRNM[0,T]$crude rate of net migration
+
+
+The CGR in Spain between 2014 and 2015 is
+```{r}
+
+# Person year
+
+PY<-sum(P2015$Total+P2014$Total)/2
+
+# Crude growth rate
+
+CGR<- (sum(P2015$Total)-sum(P2014$Total))/PY
+CGR
+
+
+```
+
+The crude rate of natural increase (CRNI) results from births and deaths processes only:
+
+```{r}
+
+# Crude birth rate
+  
+CBR<-sum(B2014$Total)/PY
+CBR
+
+
+# Crude death rate
+
+CDR<-sum(D2014$Total)/PY
+CDR
+
+
+# Crude rate of natural increase
+
+CRNI<- CBR - CDR
+CRNI
+
+```
+
+The CGR suggests a decline of Spain's population size between 2014 and 2015. However, Spain has recorded a positive CRNI. A possible explanation is that there was more out-migration than in-migration in Spain in 2014, reducing the population size and opposing the natural increase. 
+
+
+
+## Geometric growth
+
+Different growth rates can be assumed in a population over time. If we consider a geometric growth over time, the annual rate of change (r) in a population at time 0 and t is equal to:
+
+$$
+r=\frac{N(T)-N(0)}{N(0)} \frac{1}{T}
+$$
+
+Thus, if r is constant over time the population size at time t can be found by
+
+$$
+N(t)=N(0)[1+r]^t
+$$
+
+```{r}
+# If we assume that the rate of change observed in 2014 
+#in Spain stays constant in the future, we have:
+
+
+s.year<-2014
+n.year<-c(0:10)
+
+r.geom<-(sum(P2015$Total)-sum(P2014$Total))/sum(P2014$Total)
+
+pop.geom<-sum(P2014$Total)*(1+r.geom)^n.year
+
+
+#It we assume a close population (no migration)
+
+r.geom2<-(sum(B2014$Total)-sum(D2014$Total))/sum(P2014$Total)
+
+pop.geom2<-sum(P2014$Total)*(1+r.geom2)^n.year
+
+plot(s.year+n.year, pop.geom, type="l",
+     ylab="Population count", xlab="Year", ylim=c(min(pop.geom), max(pop.geom2)),
+     main="Spanish population assuming geometric growth")
+lines(s.year+n.year, pop.geom2, col=2)
+legend("topleft", c("With migration", "Without migration"), 
+       col=c(1,2), lty=1, bty="n")
+
+
+
+
+
+```
+
+
+## Exponential growth
+
+The exponential growth can simply be seen as a continuous version of the geometric growth. Here, r is the instantaneous growth rate. If we consider an exponential growth over time, the annual rate of change (r) in a population at time 0 and t is equal to:
+
+$$
+r=\frac{ln \big(\frac{N(T)}{N(0)} \big)}{T}
+$$
+Thus, if r is constant over time the population size at time t can be found by
+
+$$
+N(t) = N(0)e^{r*t}
+$$
+
+```{r}
+
+# Exponential growth
+
+r.exp<-log(sum(P2015$Total)/sum(P2014$Total))
+
+pop.exp<-sum(P2014$Total)*exp(r.exp*n.year)
+
+
+#It we assume a close population (no migration)
+
+r.exp2<-log((sum(P2014$Total)+sum(B2014$Total)-sum(D2014$Total))/sum(P2014$Total))
+
+pop.exp2<-sum(P2014$Total)*exp(r.exp2*n.year)
+
+plot(s.year+n.year, pop.exp, type="l",
+     ylab="Population count", xlab="Year", ylim=c(min(pop.geom), max(pop.geom2)),
+     main="Spanish population assuming exponential growth")
+lines(s.year+n.year, pop.exp2, col=2)
+legend("topleft", c("With migration", "Without migration"), 
+       col=c(1,2), lty=1, bty="n")
+
+```
+
+## Doubling time
+
+The doubling time is the number of year it would take for a population to double in size, under a fixed rate of change. In an exponential growth situation, if a population double between time 0 and T, then 
+
+$$
+ln \big( \frac{N(T)}{N(0)} \big) = ln(2)
+$$
+
+The doubling time (DB) for a population experiencing an exponential growth at rate r can then be found as:
+
+
+$$
+DB = \frac{ln(2)}{r}
+$$
+
+```{r}
+
+# Doubling time
+
+DB<-log(2)/r.exp
+DB
+
+
+# Doubling time without migration
+
+DB2<-log(2)/r.exp2
+DB2
+
+
+```
+
+
+
+
+# Fertility and replacement
+
+## Replacement level
+
+The replacement level is set at a TFR of 2.1. This is the average number of children a woman would need to have to reproduce herself by bearing a daughter who survives to childbearing age.
+
+* TFR> 2.1: Population growth
+* TFR= 2.1: Replacement level, constant population
+* TFR< 2.1: Population decline
+
+As the sex ratio at birth is generally 105 boys per 100 girls and because there is a risk of mortality, the TFR has to be greater than 2 for a woman to be able to "replace" herself by a daughter.
+
+
+
+## Gross reproductive rate
+
+The gross reproductive rate (GRR) is similar to the TFR but uses age-specific rate of having a female birth ($_nF^W_x[0,T]$)
+
+$$
+_nF^W_x[0,T] = \frac{Number~of~female~births~between~times~0~and~T~to~women~aged~x~to~x+n}{Number~of~person-years~lived~by~women~aged~x~to~x+n~between~times~0~and~T} 
+$$
+
+$$
+_nF^W_x[0,T] \approx 0.488 * {}_nF_x
+$$
+
+$$
+GRR[0,T] = n \sum_{x=a}^{B-n} {}_nF_x^W [0,T] \approx 0.488 *n \sum_{x=a}^{B-n} {}_nF_x [0,T]
+$$
+
+
+```{r}
+
+F2014<-subset(P2014, Age %in% B2014$Age)[,c("Age", "Female")]
+F2015<-subset(P2015, Age %in% B2014$Age)[,c("Age", "Female")]
+
+# Person-years lived by women at reproductive ages
+PY<-(F2014$Female+F2015$Female)/2
+
+
+# ASFR
+ASFR<-B2014$Total/PY
+
+# TFR
+TFR<-sum(ASFR)
+TFR
+
+# GRR
+SR<-100/205
+GRR<-sum(SR*ASFR)
+GRR
+
+```
+
+
+
+## Net reproductive rate
+
+The net reproductive rate (NRR) takes mortality into account. The NRR represents the average number of daughters that female in a cohort would bear in their lifespan if they were subject to the observed age-specific fertility ($_nF_x^W$) and mortality rates ($_nM_x$) [@preston2001demography]. The measure introduces the person-year lived between age x and x+n ($_nL_x$) in the GRR measure.
+
+
+$$
+NRR[0,T] = n \sum_{x=a}^{B-n} {}_nF_x^W [0,T] * \frac{_nL^W_x}{l_0}
+$$
+
+
+```{r}
+
+LT.sub<-subset(LT, Age %in% B2014$Age)
+
+PYx<-LT.sub$Lx/LT$lx[1]
+NRR<- sum(SR*ASFR*PYx)
+NRR
+
+
+```
+
+
+The NRR is a measure of growth!!!
+
+
+# Population models
+
+## Stationary vs Stable population
+
+There are two main population models in demography: Stable and stationary. These models are theoretical types of population used to understand population dynamics under certain mortality and fertility assumptions.
+
+### Stationary population
+
+* Constant number of births
+* Constant age-specific death rates
+* Zero age-specific net-migration rates
+
+Some properties
+
+* Constant population size and structure
+* CGR= 0
+* $e_0 = \frac{1}{CBR} = \frac{1}{CDR}$
+
+
+### Stable population
+
+* Constant annual growth in birth: $B(t)=B(0) e^{rt}$
+* Constant age-specific death rates
+* Zero age-specific net-migration rates
+
+The conditions are then:
+
+* Constant age-specific fertility rates
+* Constant age-specific death rates
+* Age-specific net-migration rates are zero
+
+
+
+
+
+## Leslie matrix 
+
+The Leslie matrix is a matrix model used for population projections, assuming a stable population. The model combined mortality and fertility measures you have seen so far. It is a way to assess the long-term consequences, for the size of a population, of keeping a defined set of age-specific fertility and mortality rates constant over time. 
+
+It takes the form of
+
+\includegraphics[trim=7 12 7 3cm, clip=TRUE, width=1.1\textwidth]{Leslie.pdf}
+
+where F* are adjusted fertility rates for mortality (see below) and s are the survivorship ratio from age x to x+n.
+
+The Leslie matrix is, generally, conceive to forecast a close (no migration) female-only population.  
+
+```{r}
+
+#First, create a 0 matrix (111x111)
+
+nr<-nrow(LT)
+mat<-matrix(0, nr, nr)
+
+
+```
+
+### The cohort component method
+
+The Leslie matrix is a matrix representation of the cohort component method. The matrix (see above) is filled in two steps.
+
+
+**Step 1**: Project forward the women surviving age-category [x:x+n]
+
+This step consists in finding the survivorship ratio ($s$) to each age group. The survivorship ratio is the proportion of people age x-n to x year that will be alive n years later, in a stationary population. 
+
+$$
+s_{x} = \frac{_nL_x}{_nL_{x-n}}
+$$
+
+```{r}
+
+#Calculate survivorship ratio
+
+surv<-LT$Lx[2:nr]/LT$Lx[1:(nr-1)]
+
+```
+
+The survivor at t+n time will thus be the people surviving from age x at time t to age x+n:
+
+$$
+_nN_x^W(t+n) = _nN_{x-n}^W(t) * s_x
+$$
+To represent this dynamic in the matrix, place the survivorship ratio as a diagonal in the matrix.
+
+```{r}
+
+#Place in matrix as diagonal
+
+mat[row(mat)==col(mat)+1] <- surv
+
+```
+
+For the open age interval, the population at time t+n is equal to
+
+$$
+_{\infty}N_x^W(t+n) = _nN_{x-n}^W(t) * s_x + _{\infty}N_{x}^W(t) *\frac{T_{x+n}}{T_x}
+$$
+```{r}
+
+#The last cell
+
+mat[nr,nr]<-(LT$Tx[nr]/LT$Tx[nr-1])
+
+```
+
+
+**Step 2**: Finding the number of surviving female in the first age group (age 0)
+
+This step consists in finding the number of female births during the projected period, which survive until the end of the period. 
+
+$$
+_nN_0^W(t+n) = B^W[t,t+n]*\frac{_nL_0}{n*l_0}
+$$
+The way to calculate the number of births is:
+
+$$
+B[t,t+n] = \sum_{x=\alpha}^{\beta-n} {}_nF_x * n * \frac{(_nN_x^W (t) +  _nN_{x}^W(t+n))}{2} 
+$$
+$$
+ = \sum_{x=\alpha}^{\beta-n} {}_nF_x * n * \frac{(_nN_x^W (t) +  _nN_{x-n}^W(t) \frac{_nL_x}{_nL_{x-n}})}{2} 
+$$
+Thus, $_nN_0^W(t+n)$ is equal to:
+
+$$
+_nN_0^W(t+n) =\frac{_nL_0}{2*l_0} \frac{1}{1+SRB} \sum_{x=\alpha}^{\beta-n} {}_nF_x * n * \big(_nN_x^W (t) +  _nN_{x-n}^W(t) \frac{_nL_x}{_nL_{x-n}}\big) 
+$$
+where SRB is the sex ratio at birth.
+
+```{r}
+
+#Create a vector
+ASFR2<-rep(0, nr)
+ASFR2[B2014$Age+1]<-ASFR
+
+#Constant across age of mother in N(0) equation
+const<- (1/(1+1.05))*(LT$Lx[2]/(2*LT$lx[1]))
+
+#Non-constant across mother age
+firstrow <- const*(ASFR2[1:(nr-1)]+(ASFR2[2:nr]*surv[1:(nr-1)]))
+
+#Fill the first row
+mat[1,] <- c(firstrow,0)
+
+```
+
+### Projections
+To forecast the population at time t (P(t)), for 1-year time interval, then
+
+$$P(t)=L^t * P(0)$$
+
+where L is the Leslie matrix.
+
+
+```{r error=F, message=F, warning=F}
+
+#Population at time 0
+
+P0<-matrix(P2015$Female, ncol=1)
+
+
+#Forecast
+time <- c(0:300)
+
+projection <- function(mat, time, pop){
+  for(i in 1:time){
+    if(i==1){project<-mat
+    proj <- project%*%pop}
+    if(i>1){project<- project%*% mat
+    proj<-project%*%pop}
+  }
+  return(proj)
+}
+
+proj.pop<- matrix(0, nrow(mat), length(time))
+for (i in 1:ncol(proj.pop)){
+  proj.pop[,i]<-projection(mat=mat, time=time[i], pop=P0)
+}
+
+
+#Total population
+tot.pop<-colSums(proj.pop)
+
+plot(x=2015+time, y=tot.pop, type="l",
+     ylab="Population count", xlab="Year",
+     main="Population size for Spanish female forecast")
+
+
+#Number of births
+
+birth<-proj.pop[1,]
+
+plot(x=2015+time, y=birth, type="l",
+     ylab="Number of births", xlab="Year",
+     main="Number of births for Spanish female forecast")
+
+library(ggplot2)
+Age<-c(0:110)
+
+H<-10
+ggplot() + 
+  geom_bar(aes(x = Age, y = proj.pop[,H]), stat = "identity", fill="red") +
+  ylim(c(0, max(proj.pop)))+
+  ylab("Population counts")+
+  coord_flip()+
+  ggtitle(paste("Population counts forecast in", 2015+H))+
+  theme_bw()
+
+
+H<-100
+ggplot() + 
+  geom_bar(aes(x = Age, y = proj.pop[,H]), stat = "identity", fill="red") +
+  ylim(c(0, max(proj.pop)))+
+  ylab("Population counts")+
+  coord_flip()+
+  ggtitle(paste("Population counts forecast in", 2015+H))+
+  theme_bw()
+
+```
+
+## Leslie matrix and stable population properties
+
+### Constant population structure and crude growth rate
+
+On the long term, the population age structure converges towards a constant age-structure.
+
+```{r}
+
+perc.pop<-sweep(proj.pop, 2, tot.pop, FUN="/")
+
+plot(x=2015+time, perc.pop[1,], type="l", ylim=c(0, 0.02),
+     ylab="Proportion", xlab="Year",
+     main="Proportion of Spanish female population at specific ages")
+lines(x=2015+time, perc.pop[26,], col=2)
+lines(x=2015+time, perc.pop[46,], col=3)
+lines(x=2015+time, perc.pop[66,], col=4)
+lines(x=2015+time, perc.pop[86,], col=6)
+legend("bottomleft", c("0", "25", "45", "65", "85"),
+       lty=1, col=c(1:4,6), bty="n", cex=0.7)
+```
+
+
+The crude growth rate also converges towards a constant over time in a stable population.
+
+```{r}
+
+CGR.proj<-c(1:(length(time)-1))
+for(i in 1:length(CGR.proj)){
+  CGR.proj[i]<-log(sum(proj.pop[,i+1])/sum(proj.pop[,i]))
+}
+
+plot(2015+time[1:(length(time)-1)], CGR.proj, type="l",
+     ylab="CGR", xlab="Year",
+     main="Crude growth rate of Spanish female population")
+
+```
+
+
+
+# Exercises {-}
+
+1) Load 'LTFrance2015.txt', 'ASFRFrance2015.txt' and 'PopFrance2015.txt'.
+
+2) Calculate the TFR and NRR for France in 2015. Discuss if France reached the population replacement level in 2015.
+
+3) Create the Leslie matrix for French females in 2015.
+
+4) Project French females population 200 years ahead. What is the proportion of the 2015 population left 200 later?
+
+5) How did the age-structure change between 2015 and 2215? Older or younger?
+
+6) Calculate the CGR for France. Discuss your results in relation with the CGR for Spain found in the class. 
+
+
+
+# Eigenvalue as crude growth rate in stable populations {-}
+
+Eigen comes from the German "self". The eigenvalues can be referred to as "latent roots" of a squared matrix. They play a fundamental role in the solution of linear system and provide concrete information "*from a set of static, algebric equations*" [@caswell2001matrix].
+
+The eigenvalue ($\lambda$) of a matrix A is that
+
+$$
+Ax = \lambda x
+$$
+where x is some scalar, called eigenvector.
+
+The eigenvalue is found by solving
+
+$$
+(A-\lambda I)x = 0
+$$
+where I is the identity matrix.
+
+For example (issued from @caswell2001matrix)
+
+```{r}
+
+#Example
+
+A<-matrix(c(3,2,-6,-5), ncol=2)
+A
+
+#if x=t(1,1)
+x<-matrix(c(1,1), ncol=1)
+x
+
+#then lambda
+lambda<- A%*%x
+
+#x is thus the eigenvector of A and lambda is -3
+lambda
+
+
+```
+
+The intrinsic crude growth rate of a stable population is found by finding the eigenvalue of the Leslie matrix, $CGR = 1-\lambda$.
+
+```{r}
+
+-(1-as.numeric(eigen(mat)$values[1]))
+CGR.proj[length(time)-1]
+
+```
+
+The intrinsic population structure is the first eigenvector of the Leslie matrix.
+
+```{r}
+
+prop<-eigen(mat)$vector[,1]/sum(eigen(mat)$vector[,1])
+
+
+plot(LT$Age, as.numeric(prop),
+     ylab="Age", xlab="Proportion",
+     main="Intrinsic population structure for stable population")
+lines(perc.pop[,300], col=2)
+
+```
+
+
+
+# References {-}
