@@ -1,0 +1,242 @@
+---
+title: "thursday class notes"
+author: "Tim Riffe"
+date: "7/8/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Balancing equation
+
+The change in population size can be reduced entirely to the initial population size, and the numbers of births, deaths, in-migrations, and out-migrations in the intermediate period.
+
+$$ 
+N(T) = N(0) + B(0,T) - D(0,T) + I(0,T) - E(0,T)
+$$
+
+Right about here I took a break to give an overarching warning about the broader context and history of population growth models have been abused. It's not the kind of thing that should be treated as an objective that can be *gamed*.
+
+# Crude indicators
+
+$$ CBR(0,T) = \frac{B(0,T)} {PY(0,T)}$$
+
+Note, this can be positive or negative
+$$ CNMR(0,T) = \frac{I(0,T) - E(0,T)}{PY(0,T)}$$
+
+Crude growth rate
+$$ CGR(0,T) = CBR(0,T) - CDR(0,T) + CNMR(0,T)$$
+# read in the data
+```{r, message = FALSE}
+
+#setwd()
+library(tidyverse)
+library(readr)
+#Birth counts in 2014
+B_url <- "https://raw.githubusercontent.com/timriffe/BSSD2021Module2/master/04_thursday/BirthsSpain2014.txt"
+B2014 <- read_delim(B_url, 
+                    delim = " ",
+                    trim_ws = TRUE) %>% 
+  mutate(Sex = "Total") %>% 
+  select(Age, Sex, Births = Total) %>% 
+         mutate(Age = parse_number(Age)) 
+
+# Death counts in 2014
+D_url <- "https://raw.githubusercontent.com/timriffe/BSSD2021Module2/master/04_thursday/DeathsSpain2014.txt"
+D2014 <- read_delim(D_url,
+                    delim = " ",
+                    trim_ws = TRUE)  %>% 
+         pivot_longer(Female:Total, 
+                      names_to = "Sex", 
+                      values_to = "Deaths") %>% 
+         mutate(Age = parse_number(Age)) 
+  
+# Population counts on January 1st, 2014
+P1_url <- "https://raw.githubusercontent.com/timriffe/BSSD2021Module2/master/04_thursday/PopulationSpain2014.txt"
+P2014 <- read_delim(P1_url,
+                    delim = " ",
+                    trim_ws = TRUE) %>% 
+         pivot_longer(Female:Total, 
+                      names_to = "Sex", 
+                      values_to = "Population") %>% 
+         mutate(Age = parse_number(Age)) 
+
+# Population counts on January 1st, 2015
+P2_url <- "https://raw.githubusercontent.com/timriffe/BSSD2021Module2/master/04_thursday/PopulationSpain2015.txt"
+P2015 <- read_delim(P2_url,
+                    delim = " ",
+                    trim_ws = TRUE) %>% 
+         pivot_longer(Female:Total, 
+                      names_to = "Sex", 
+                      values_to = "Population") %>% 
+         mutate(Age = parse_number(Age)) 
+
+ES2014 <-
+  P2014 %>% 
+  bind_rows(P2015) %>% 
+  pivot_wider(names_from = Year, 
+              values_from = Population, 
+              names_prefix = "P") %>% 
+  left_join(D2014, by = c("Age", "Sex")) %>% 
+  left_join(B2014, by = c("Age", "Sex")) %>% 
+  arrange(Sex, Age) 
+#Births in 2014
+
+# 2014 Life table (calculated in class 2)
+LT_url <- "https://raw.githubusercontent.com/timriffe/BSSD2021Module2/master/04_thursday/LTSpain2014.txt"
+LT <- read_delim(LT_url, delim = " ")
+```
+
+# calculate crude growth
+
+Components of change:
+```{r}
+
+Components <- 
+  ES2014 %>% 
+  filter(Sex == "Total") %>% 
+  summarize(P1 = sum(P2014),
+            P2 = sum(P2015),
+            B = sum(Births, na.rm = TRUE),
+            D = sum(Deaths)) %>% 
+  mutate(PY = (P1 + P2) / 2,
+         Nmig = P2 - (P1 + B - D))
+
+CrudeRates <-
+  Components %>% 
+  mutate(CGR = (P2 - P1) / PY,
+         CBR = B / PY,
+         CDR = D / PY,
+         CNMR = Nmig / PY,
+         CRNI = CBR - CDR,
+         .keep = "none")
+CrudeRates
+```
+# geometric versus exponential / instantaneous growth
+
+Geometric growth is the change in population size divided by what you started with.
+
+$$ r^{geometric} = \frac{P2 - P1}{P1} $$
+$$ P(t) = P(0)\cdot (1 + r^{geometric})^t$$
+
+$$ P(t) = P(0) * e^{r*t}$$
+
+$$ r^{continuous} = \frac{ln(\frac{P(T)}{P(0)})}{T}$$
+
+So, let's do a hypothetical projection, holding the crude geometric growth rates constant for something like 10 years.
+```{r}
+growth <- 
+  Components %>% 
+  mutate(r_geom = (P2 - P1) / P1,
+         r_nat = (B - D) / P1,
+         r_cont = log(P2 / P1),
+         r_cont_nat = log( (P1 + B - D) / P1)) %>% 
+  right_join(tibble(t = 0:10),
+             by = character()) %>% 
+  mutate(Pt_geom = P1 * (1 + r_geom) ^ t,
+         Pt_nat = P1 * (1 + r_nat) ^ t,
+         Pt_cont = P1 * exp(r_cont * t),
+         Pt_cont_nat = P1 * exp(r_cont_nat * t)) %>% 
+  select(t, Pt_geom, Pt_nat, Pt_cont, Pt_cont_nat)
+
+growth %>% 
+  pivot_longer(Pt_geom:Pt_cont_nat, 
+               names_to = "type", 
+               values_to = "projection") %>% 
+  ggplot(aes(x = t, y = projection, color = type)) + 
+  geom_line()
+
+```
+
+# stationary vs stable populations
+
+The lifetable $L_x$ is a kind of stationary population. Or at least it can be convenient to think of it as one. Namely, in a *stationary* population, 
+1. the rates of mortality and fertility are unchanging 
+2. the numbers of births and deaths each year are the same 
+3. the number of births and deaths are equal
+4. the population structure is proportional to the lifetable $L_x$ and is unchanging
+5. the period population population structure is equal to the cohort population structure.
+
+a stable population is the same in that:
+1. the rates of mortality and fertility are unchanging
+2. the period population structure is unchanging (proportionally equal)
+3. cohort cross-sections of the Lexis diagram remain proportional to the lifetable $L_x$
+
+a stable population is different in that:
+1. the numbers of births and deaths in each year can be different
+2. period and cohort population structure are not proportional to one another (unless $r=0$)
+
+## detour for intuition
+
+The stable population structure is mapped from something proportional to lifetable exposure $L_x$. If the population is growing then it can expand at the base and shrink at the top. if the population is shrinking then it can bulge at the top.
+```{r}
+r       <- seq(-.03,.03, by = .01)
+r_thing <- expand_grid(r, Age = 0:110)
+
+LT %>% 
+  select(Age, Lx) %>% 
+  mutate(Age_mid = Age + .5) %>% 
+  right_join(
+    r_thing, by = "Age"
+  ) %>% 
+  arrange(r, Age) %>% 
+  mutate(Structure = Lx * exp(-r * Age_mid)) %>% 
+  group_by(r) %>% 
+  mutate(Structure = Structure / sum(Structure)) %>% 
+  ggplot(aes(x = Age, y = Structure, color = r, group = r)) +
+  geom_line()
+```
+
+# Deriving $r$ empirially.
+
+## the napkin approach
+```{r}
+G <- 30
+BF <- 
+B2014 %>% 
+  select(-Sex) 
+
+# this has all 3 sexes, so we filter down
+
+StableComponents <-
+  ES2014 %>% 
+  filter(Sex == "Female") %>% 
+  # remove Births col so we can add it back right
+  select(-Births) %>% 
+  # add on Births
+  left_join(BF, by = "Age") %>% 
+  # add on the lifetable
+  left_join(LT, by = "Age") %>% 
+  mutate(
+    Exposure = (P2014 + P2015) / 2,
+    Fxf = Births / Exposure * .4886,
+    Lx = Lx / 1e5,
+    Fxf = ifelse(is.na(Fxf),0,Fxf)) %>% 
+  select(Age, Lx, Fxf)
+
+# NRR
+NRR <- 
+StableComponents %>% 
+  summarize(NRR = sum(Lx * Fxf)) %>% 
+  pull(NRR)
+
+
+
+```
+
+Here's a parlor trick, back of the envelope calculation of $r$, just guess the mean length of the generation in the stable population, it ought to be sort of close to $MAB$, which we calculated earlier in this module. 
+
+$$ NRR = e^{rT}$$
+$$ log(NRR) = rT$$
+$$ \frac{log(NRR)}{T} = r$$
+```{r}
+log(NRR) / 33
+```
+
+So, this estimate is going to be my guess!
+
+## an "exact" approach: Leslie
+
+
