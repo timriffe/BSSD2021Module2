@@ -237,6 +237,6 @@ log(NRR) / 33
 
 So, this estimate is going to be my guess!
 
-## an "exact" approach: Leslie
+
 
 

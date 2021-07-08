@@ -1,0 +1,121 @@
+---
+title: "Wednesday exercise solutions"
+author: "Tim Riffe"
+date: "7/8/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Exercises
+
+Choose one country from the HMD and select 2 years (ideally over 15 years apart).
+
+```{r}
+library(tidyverse)
+library(readr)
+my_url <- "https://raw.githubusercontent.com/timriffe/BSSD2021Module2/master/03_wednesday/wednesday.csv"
+
+DAT <- read_csv(my_url) %>% 
+  filter(Country == "Japan",
+         Year %in% c(1981, 2010),
+         Sex == "total") %>% 
+  select(Year, Age, Exposure, M) %>% 
+  pivot_wider(names_from = Year, 
+              values_from = c(Exposure, M))
+```
+
+## Exercise 1 {-}
+
+1) Create a function calculating the CDR, standardized (direct) CDR and the Kitagawa decomposition. 
+
+```{r}
+
+Kitagawa <- function(rates1, rates2, weights1, weights2){
+  
+  # step 1 rescale the weights to sum to 1
+  
+  St1       <- weights1 / sum(weights1)
+  St2       <- weights2 / sum(weights2)
+  
+  # step 2 calculate the averages
+  
+  St_avg    <- (St1 + St2) / 2
+  rates_avg <- (rates1 + rates2) / 2
+  
+  # step 3 get the rate effect
+  
+  REx       <- (rates2 - rates1) * St_avg
+  
+  # step 4 get the composition effect
+  
+  CEx       <- (St2 - St1) * rates_avg
+  
+  # calculate things to return
+  # difference between weighted avg 2 and 1
+  avg1      <- sum(St1 * rates1)
+  avg2      <- sum(St2 * rates2)
+  delta     <- avg2 - avg1
+  RE        <- sum(REx)
+  CE        <- sum(CEx)
+  
+  # compose the list of things to return
+  list(RE = RE,
+       CE = CE,
+       delta = delta,
+       avg1 = avg1,
+       avg2 = avg2,
+       REx = REx,
+       CEx = CEx)
+}
+
+Kitagawa(rates1 = DAT$M_1981, 
+         rates2 = DAT$M_2010, 
+         weights1 = DAT$Exposure_1981, 
+         weights2 = DAT$Exposure_2010)
+```
+
+2) Calculate the age-specific rate effect and age-composition effect of the difference.
+
+3) What factors allowed the CDR to decrease (or increase) over time?
+
+The CDR increased over time by about half. Rates improved, which by themselves would have decreased the CDR by half or so. The population aged, pushing the population weights into higher ages, which more than offset the secular trend in improvement. Changes in population structure account for all of the increase in CDR.
+
+## Exercise 2 {-}
+
+1) Calculate the life table from these two years.
+
+```{r}
+hacky_e0 <- function(M){
+  sum(c(1,exp(-cumsum(M)))) - .5
+}
+```
+
+2) Create a function for the Arriaga decomposition.
+
+No! We're doing this using Horiuchi!
+
+3) Calculate the age-specific contributions for the change in life expectancy over time.
+
+```{r}
+library(DemoDecomp)
+DEC <- 
+  DAT %>% 
+  select(Age, M_1981, M_2010) %>% 
+  mutate(contrib = horiuchi(hacky_e0, M_1981, M_2010, N = 10))
+```
+
+
+
+4) Plot and interpret the results.
+
+```{r}
+DEC %>% 
+  ggplot(aes(x = Age, y = contrib)) + 
+  geom_bar(stat = "identity", width = 1)
+```
+
+
+
