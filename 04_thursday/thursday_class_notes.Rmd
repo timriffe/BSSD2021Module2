@@ -237,6 +237,135 @@ log(NRR) / 33
 
 So, this estimate is going to be my guess!
 
+# The Leslie matrix
+```{r}
 
+#First, create a 0 matrix (111x111)
+
+nr   <- nrow(LT)
+ages <- LT$Age
+mat  <- matrix(0, nr, nr, 
+               dimnames = list(to = ages, 
+                               from = ages))
+
+
+```
+
+**Step 1**: Project forward the women surviving age-category [x:x+n]
+
+
+```{r}
+#Calculate survivorship ratio
+Sx <-
+  LT %>% 
+  mutate(Sx = lead(Lx) / Lx) %>% 
+  drop_na() %>% 
+  pull(Sx)
+```
+
+This vector goes in the matrix subdiagonal
+```{r}
+#Place in matrix as diagonal
+
+mat[row(mat) == col(mat) + 1] <- Sx
+
+#The last cell
+mat[nr, nr]<-(LT$Tx[nr] / LT$Tx[nr - 1])
+```
+* It's also common to put a zero in that corner
+
+**Step 2**: Finding the number of surviving female in the first age group (age 0)
+
+
+
+```{r}
+B <- B2014 %>% 
+  select(Age, Births)
+# get ASFR as vector
+ASFR <- 
+  ES2014 %>% 
+  filter(Sex == "Female") %>% 
+  select(-Births) %>% 
+  # this is the only difference from before
+  # in earlier chunk this was a right_join()
+  left_join(B, by = "Age") %>% 
+  mutate(Exposure = (P2014 + P2015) / 2,
+         ASFR = Births / Exposure,
+         ASFR = ifelse(is.na(ASFR), 0 , ASFR)) %>% 
+  pull(ASFR)
+
+# SRB and mortality discount constant 
+# across age of mother in N(0) equation
+PF    <- .4886 # or 0.4878049  = (1 / (1 + 1.05)
+const <- PF * (LT$Lx[2] / (2 * LT$lx[1]))
+
+# Non-constant across mother age
+firstrow <- const * (ASFR + (lead(ASFR, default = 0) * c(Sx, 0)))
+
+# Fill the first row
+mat[1, ] <- firstrow
+```
+
+### Projections
+
+
+$$P(t)=L^t * P(0)$$
+
+```{r error=F, message=F, warning=F}
+library(expm)
+# the projection
+Pt <-
+  ES2014 %>% 
+  filter(Sex == "Female") %>% 
+  select(Age, Population = P2015) %>% 
+  right_join(tibble(t = 0:200),
+             by = character()) %>% 
+  arrange(t, Age) %>% 
+  group_by(t) %>% 
+  mutate(Population = (mat %^% t[1]) %*% Population %>% c()) %>% 
+  ungroup()
+```
+
+### visualize the results
+
+```{r, message = FALSE}
+library(scales) # install if needed
+#Total population
+Pt %>% 
+  group_by(t) %>% 
+  summarize(Population = sum(Population),
+            .groups = "drop") %>% 
+  mutate(Year = 2015 + t) %>% 
+  ggplot(aes(x = Year, y = Population)) + 
+  geom_line() + 
+  scale_y_continuous(labels = label_number(suffix = " M", scale = 1/1000000)) + 
+  labs(title = "Population size for Spanish female projection")
+
+#Number of births
+Pt %>% 
+  filter(Age == 0) %>% 
+  mutate(Year = 2015 + t) %>% 
+  ggplot(aes(x = Year, y = Population)) + 
+  geom_line() + 
+  scale_y_continuous(labels = label_number(suffix = " K", scale = 1/1000)) +
+  labs(title = "Number of births in Spanish female projection")
+
+# structure in a given year
+
+Pt %>% 
+  filter(t == 10) %>% 
+  ggplot() + 
+  geom_bar(aes(x = Age, 
+               y = Population), 
+               stat = "identity", 
+               fill = "#e32951",
+               width = 1) +
+  ylab("Population counts")+
+  coord_flip()+
+  theme_bw() + 
+  scale_y_continuous(labels = label_number(suffix = " K", scale = 1/1000)) + 
+  labs(title = "Spanish female projection in year 2025")
+
+```
 
 
