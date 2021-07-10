@@ -11,11 +11,14 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # Summary
 
+We want to model a demographic parameter in such as way as to find a linear pattern that is can be plausibly extrapolated into the future. For mortality, we first look to the rates. We will find rough linearity within age by logging the rates.
 
 # Data
 ```{r, include = FALSE}
 library(tidyverse)
 library(demography)
+# You need to alter the username and password to be be yours
+# as character strings
 data  <- hmd.mx("ESP", us, pw)
 sexes <- data$pop %>% names()
 
@@ -64,6 +67,15 @@ ES <- left_join(ESpop,
   mutate(M = Deaths / Exposure)
 ```
 
+# Visualize the mortality surface
+
+```{r}
+library(colorspace)
+ES %>% 
+  ggplot(aes(x = Year, y = Age, fill = log(M))) +
+  geom_tile() +
+  scale_fill_continuous_sequential()
+```
 
 # The Lee-Carter model
 
@@ -71,6 +83,8 @@ $$
 ln(m_{x}(t)) = \alpha_x + \beta_x \kappa(t) + \epsilon_x(t)
 $$
 where $\alpha_x$ is the age-specific average of the log death rates ($m_x(t)$). The $\beta_x$ and $\kappa_t$ are found with a Singular Value Decomposition (SVD) and consist in the normalized first right and left singular vectors. They are interpreted as the age-pattern (age-specific rate of change relative to $\kappa(t)$) of mortality change and the time-pattern of mortality change. Mortality is forecast by extrapolating $\kappa(t)$. The term $\epsilon_x(t)$ is the error of the model.
+
+On video I used a sheet of paper, curved, tilted, and twisted, to describe how the Lee Carter model works. The curve in the paper is the base age pattern $\alpha_x$, assume same every year. The tilt in the paper is the time trend $\kappa(t)$, and the slight twist is $\beta_x$ (different time trend per age).
 
 ### check for log-linearity
 
@@ -116,7 +130,7 @@ plot(Age, ax, type="l",
 ```{r error=F, message=F, warning=F}
 
 #Center the matrix
-cent_lM <- sweep(lM, 1, ax, FUN = "-")
+cent_lM <- lM - ax
 
 ```
 
@@ -183,8 +197,6 @@ lines(Year[length(Year)]+h, Kt.fcst, col=2)
 
 ```
 
-
-
 ## Find the prediction intervals (PI) 
 
 The prediction intervals (PI) are found by finding the standard errors of the estimates (SE) from the random walk with drift model. The SE indicates the uncertainty with one year forecast ahead. It is here assumed that the SE increase with the forecast horizon (h) square root.
@@ -198,7 +210,7 @@ where $z$ is the z-score at level $a$
 # Fit random walk with drift
 fit.Kt <- Kt[1:(lK - 1)] + drift
 
-# Find SE
+# Find SE (RMSE)
 se     <- sqrt(sum((Kt[2:lK] - fit.Kt)^2) / (length(Kt) - 1))
 
 # Calculate PI

@@ -517,8 +517,111 @@ LT %>%
 An extension of the Arriaga method decomposing life expectancy by age AND cause of death is also available (see @preston2001demography). There is also an extension for healthy life expectancy (see @shkolnikov2017decomposition).
 
 # Generalized decomposition
-Kitagawa decomposition is applicable to quantities calculated as sum products, for example weighted means where the weights might differ in the groups compared. Arriaga decomposition works with life tables and life expectancy, and so we call it a *bespoke* decomposition. That means that an analytic solution has been proposed that allows for the decomposition to be directly calculated. Three such methods are the method of step-wise replacement
+Kitagawa decomposition is applicable to quantities calculated as sum products, for example weighted means where the weights might differ in the groups compared. Arriaga decomposition works with life tables and life expectancy, and so we call it a *bespoke* decomposition. That means that an analytic solution has been derived for these settings that allows for the decomposition to be directly calculated. 
 
+A generalized decomposition method is one that applied *any* deterministic function of parameters that produces some synthetic measure based on them. For example, in the case of Kitagawa the parameters are a vector of age structure and demographic rates. To do a life expectancy decomposition with a generalized method, you need a function that converts rates to life expectancy (not the whole lifetable).
+
+Three generalized methods are
+1. The method of difference-scaled partial derivatives @caswell1989analysis
+| This method was originally called the lifetable response experiment (LTRE), but it's totally general. 
+| We might also call it the Caswell method.
+2. The method of step-wise parameter replacement (@andreev2002algorithm and @andreev2012excel)
+3. The method of gradual perturbation (@horiuchi2008decomposition)
+| This is also known as pseudo-continuous decomposition, or else we just call it the Horiuchi method.
+
+All three of these are implemented in the `DemoDecomp` `R` package (@DemoDecomp), with the functions `ltre()`, `stepwise_replacement()`, and `horiuchi()`. There's no paper really comparing them, but here's Tim's hand-wavy explanation of their differences:
+
+## LTRE `ltre()`
+This method calculates the partial derivatives of your function's parameters half way between the first and second set of parameters, then multiplies them by the observed difference in each parameter. This is a decent approximation of the contribution of each parameter to the difference in the quantity calculated. This method can be blazing fast if you have an analytic partial derivative function on hand.
+
+## Stepwise replacement `stepwise_replacement()`
+This method works by swapping out elements of the first parameters incrementally turning them into the second set of parameters. At each parameter replacement, we recalculate the result. You end up with your result calculated as many times as you have parameters. The moving first differences on this result vector approximates the leverage of that parameter's difference on the result. Since it makes a difference what order you swap the results out, usually one averages the results of going *up* and *down* the parameters. If you have $n$ parameters, it recalculates the result $2*n$ times. The sum of the parameter-specific contributions is equal to the difference in the summary result. Each-parameter's contribution is approximate.
+
+## Gradual perturbation `horiuchi()`
+This method works by interpolating between your first and second parameters in `N` equal steps. This then becomes the ($n*N$) *background* against which rate differences are perturbed. At each interpolation point and for each parameter we perturb the parameter both up and down by $1/(2*N)$ of the amount by which it changed and recalculate the result. The difference between these two calculations is an $n*N$ approximation of each parameter at each interpolation point, and summing over the interpolated space within parameters approximates the contribution of that parameter to the different in your result. For $n$ parameters and $N$ interpolation points, your result ends up recalculated $2*n*N$ times, so for large numbers of parameters and large `N` this method can be slow. 
+
+## How they work
+As far as we're concerned, to use these decomposition methods from `DemoDecomp` package you need to be able to write your code in the form of a function that takes a single vector of parameters.
+
+Here's a function that calculates a crude rate, so we can compare it with Kitagawa. Kitagawa needs two pieces of information, structure and rates (weights and the thing being weighted). We should write the function so that these are stacked in a single vector, e.g. `c(rates, structure)` or vice versa. Your function then needs to be able to unpack the vector and use it to calculate your result.
+
+```{r}
+my_CrudeRate <- function(params){
+  
+  # first we need to sort out which parameter is which
+  n <- length(params)
+  
+  # we stacked M on top of Sx, so reshape to a 2 column matrix
+  dim(params) <- c(n / 2, 2)
+  
+  # return one summary measure
+  sum(params[,1] * params[,2])
+}
+```
+
+You can use the decomposition functions in base or in a tidy setup. For either, you'll want the parameters ordered in the way expected by your function.
+
+```{r}
+DAT_Dec2 <-
+  DAT %>% 
+  filter(Year == 2014, 
+         Sex == "total") %>% 
+  group_by(Country) %>% 
+  mutate(Sx = Exposure / sum(Exposure)) %>% 
+  ungroup() %>% 
+  select(-Exposure) %>% 
+  pivot_longer(M:Sx, 
+               names_to = "variable", 
+               values_to = "pars") %>% 
+  pivot_wider(names_from = Country, values_from = pars) %>% 
+  arrange(variable, Age)
+```
+
+In base, let's check they all at least are additive in the desired way:
+
+```{r}
+my_CrudeRate(DAT_Dec2$Japan) - 
+my_CrudeRate(DAT_Dec2$Taiwan)
+
+ltre(func = my_CrudeRate, 
+     pars1 = DAT_Dec2$Taiwan,
+     pars2 =DAT_Dec2$Japan,
+     N = 1) %>% 
+     sum()
+
+stepwise_replacement(
+     func = my_CrudeRate, 
+     pars1 = DAT_Dec2$Taiwan,
+     pars2 =DAT_Dec2$Japan) %>% 
+     sum()
+
+horiuchi(
+     func = my_CrudeRate, 
+     pars1 = DAT_Dec2$Taiwan,
+     pars2 =DAT_Dec2$Japan,
+     N = 10) %>% 
+     sum()
+```
+Since you end up with one contribution per parameter, decomposition results can sometimes be multidimensional, and can benefit from further aggregation and processing (remember they're additive). Otherwise, you end up with more results than you know what to do with. For that reason, you might do well to just stay in the tidy framework:
+
+```{r}
+DAT_Dec2 %>% 
+  mutate(contribution = horiuchi(
+     func = my_CrudeRate, 
+     pars1 = Taiwan,
+     pars2 = Japan,
+     N = 10
+  ),
+  # group to 10-year age groups
+  Age = Age - Age %% 10) %>% 
+  # sum contributions in groups and by variable
+  group_by(variable, Age) %>% 
+  summarize(contribution = sum(contribution), .groups = "drop") %>% 
+  ggplot(aes(x = Age+5, y = contribution, fill = variable)) + 
+  geom_col(width = 10) + 
+  xlab("Age") + 
+  labs(title = "Contribution of mortality rates and population structure\nto differences in crude mortality rate")
+```
 
 # Exercises {-}
 

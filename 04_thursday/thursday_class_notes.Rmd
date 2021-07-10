@@ -248,7 +248,7 @@ mat  <- matrix(0, nr, nr,
                dimnames = list(to = ages, 
                                from = ages))
 
-
+# A <- matrix(1:9,3, dimnames = list(to = 0:2, from = 0:2))
 ```
 
 **Step 1**: Project forward the women surviving age-category [x:x+n]
@@ -275,8 +275,6 @@ mat[nr, nr]<-(LT$Tx[nr] / LT$Tx[nr - 1])
 * It's also common to put a zero in that corner
 
 **Step 2**: Finding the number of surviving female in the first age group (age 0)
-
-
 
 ```{r}
 B <- B2014 %>% 
@@ -308,8 +306,8 @@ mat[1, ] <- firstrow
 
 ### Projections
 
-
 $$P(t)=L^t * P(0)$$
+
 
 ```{r error=F, message=F, warning=F}
 library(expm)
@@ -353,7 +351,7 @@ Pt %>%
 # structure in a given year
 
 Pt %>% 
-  filter(t == 10) %>% 
+  filter(t == 100) %>% 
   ggplot() + 
   geom_bar(aes(x = Age, 
                y = Population), 
@@ -364,8 +362,12 @@ Pt %>%
   coord_flip()+
   theme_bw() + 
   scale_y_continuous(labels = label_number(suffix = " K", scale = 1/1000)) + 
-  labs(title = "Spanish female projection in year 2025")
+  labs(title = "Spanish female projection in year 2115")
 
 ```
 
+The Leslie matrix also tells you about asymptotic growth, i.e. the real intrinsic growth.
+```{r}
+eigen(mat)$values[1] %>% Re() %>% log()
+```
 
